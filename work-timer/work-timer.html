@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AhnLab 업무 타이머</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;600;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: rgba(255,255,255,0.08);
+    --morning: #3b82f6;
+    --morning-glow: rgba(59,130,246,0.15);
+    --lunch: #f59e0b;
+    --lunch-glow: rgba(245,158,11,0.15);
+    --afternoon: #10b981;
+    --afternoon-glow: rgba(16,185,129,0.15);
+    --stretch: #a855f7;
+    --stretch-glow: rgba(168,85,247,0.2);
+    --text: #f1f5f9;
+    --text-muted: #64748b;
+    --text-sub: #94a3b8;
+    --radius: 16px;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59,130,246,0.15);
+  }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 32px 20px 40px;
+    overflow-x: hidden;
+  }
+
+  /* 배경 파티클 */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* 헤더 */
+  .header {
+    text-align: center;
+    padding: 8px 0 4px;
+  }
+  .header-logo {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .header-title {
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--text-sub);
+    letter-spacing: 1px;
+  }
+
+  /* 메인 시계 카드 */
+  .clock-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 36px 40px 32px;
+    text-align: center;
+    transition: border-color 0.6s ease, box-shadow 0.6s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .clock-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.8;
+    transition: background 0.6s ease;
+  }
+  .clock-card.morning { --accent: var(--morning); border-color: rgba(59,130,246,0.2); box-shadow: 0 0 40px var(--morning-glow); }
+  .clock-card.morning::before { background: var(--morning); }
+  .clock-card.lunch { --accent: var(--lunch); border-color: rgba(245,158,11,0.2); box-shadow: 0 0 40px var(--lunch-glow); }
+  .clock-card.lunch::before { background: var(--lunch); }
+  .clock-card.afternoon { --accent: var(--afternoon); border-color: rgba(16,185,129,0.2); box-shadow: 0 0 40px var(--afternoon-glow); }
+  .clock-card.afternoon::before { background: var(--afternoon); }
+  .clock-card.overtime { --accent: #ef4444; border-color: rgba(239,68,68,0.2); box-shadow: 0 0 40px rgba(239,68,68,0.1); }
+  .clock-card.overtime::before { background: #ef4444; }
+  .clock-card.off { --accent: var(--text-muted); border-color: var(--border); }
+
+  /* ── 플립 시계 ── */
+  .flip-clock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 4px 0 0;
+  }
+  .flip-clock-sm { gap: 4px; }
+
+  .flip-unit { display: flex; gap: 4px; }
+
+  /* 카드 컨테이너 */
+  .flip-card {
+    position: relative;
+    width: 64px;
+    height: 86px;
+    border-radius: 8px;
+    perspective: 400px;
+  }
+  .flip-clock-sm .flip-card { width: 40px; height: 54px; border-radius: 6px; }
+
+  /* 공통: 패널은 카드와 동일 크기, clip-path로 절반만 노출 */
+  .f-top, .f-bot,
+  .f-upper-leave, .f-lower-enter {
+    position: absolute;
+    left: 0; right: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* 상단 패널: 위쪽 절반만 보임 */
+  .f-top {
+    top: 0;
+    clip-path: inset(0 0 50% 0);
+    background: #f0f2f5;
+    border-radius: 8px 8px 0 0;
+    z-index: 1;
+  }
+  /* 하단 패널: 아래쪽 절반만 보임 */
+  .f-bot {
+    top: 0;
+    clip-path: inset(50% 0 0 0);
+    background: #e2e6eb;
+    border-radius: 0 0 8px 8px;
+    z-index: 1;
+  }
+  .flip-clock-sm .f-top { border-radius: 6px 6px 0 0; }
+  .flip-clock-sm .f-bot { border-radius: 0 0 6px 6px; }
+
+  /* 숫자 span */
+  .f-top span, .f-bot span,
+  .f-upper-leave span, .f-lower-enter span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 60px;
+    font-weight: 800;
+    line-height: 1;
+    color: #000000;
+    display: block;
+    user-select: none;
+    transform: none;
+  }
+  .flip-clock-sm .f-top span,
+  .flip-clock-sm .f-bot span,
+  .flip-clock-sm .f-upper-leave span,
+  .flip-clock-sm .f-lower-enter span { font-size: 37px; }
+
+  /* 중앙 구분선 */
+  .f-divider {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    height: 1px;
+    background: rgba(0,0,0,0.12);
+    z-index: 10;
+    pointer-events: none;
+    margin-top: -1px;
+  }
+
+  /* 카드 그림자 */
+  .f-top::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: rgba(0,0,0,0.4);
+    z-index: 2;
+  }
+
+  /* 애니메이션 오버레이 */
+  /* upper-leave: 위 절반 노출, 앞으로 접혀 내려감 */
+  .f-upper-leave {
+    top: 0;
+    clip-path: inset(0 0 50% 0);
+    transform-origin: center bottom;
+    z-index: 4;
+    border-radius: 8px 8px 0 0;
+    background: #f0f2f5;
+  }
+  /* lower-enter: 아래 절반 노출, 뒤에서 펼쳐짐 */
+  .f-lower-enter {
+    top: 0;
+    clip-path: inset(50% 0 0 0);
+    transform-origin: center top;
+    z-index: 4;
+    border-radius: 0 0 8px 8px;
+    background: #e2e6eb;
+  }
+  .flip-clock-sm .f-upper-leave { border-radius: 6px 6px 0 0; }
+  .flip-clock-sm .f-lower-enter { border-radius: 0 0 6px 6px; }
+
+  @keyframes foldDown {
+    0%   { transform: rotateX(0deg); }
+    100% { transform: rotateX(-90deg); }
+  }
+  @keyframes unfoldDown {
+    0%   { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg); }
+  }
+
+  /* 세션 무관하게 숫자는 항상 검정 */
+  .f-top span, .f-bot span,
+  .f-upper-leave span, .f-lower-enter span { color: #000000; }
+
+  /* 세퍼레이터 */
+  .flip-sep {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 52px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.25);
+    line-height: 1;
+    align-self: center;
+    margin-bottom: 2px;
+    animation: sep-blink 1s step-end infinite;
+  }
+  .flip-sep-sm {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.25);
+    line-height: 1;
+    align-self: center;
+    animation: sep-blink 1s step-end infinite;
+  }
+  @keyframes sep-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.15; }
+  }
+
+  .current-date {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+
+  /* 세션 배지 */
+  .session-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: all 0.6s ease;
+  }
+  .session-badge.morning { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .session-badge.lunch { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .session-badge.afternoon { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .session-badge.overtime { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .session-badge.off { background: rgba(100,116,139,0.12); color: var(--text-muted); border: 1px solid rgba(100,116,139,0.2); }
+
+  .badge-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+  .session-badge.morning .badge-dot { background: #3b82f6; }
+  .session-badge.lunch .badge-dot { background: #f59e0b; }
+  .session-badge.afternoon .badge-dot { background: #10b981; }
+  .session-badge.overtime .badge-dot { background: #ef4444; }
+  .session-badge.off .badge-dot { background: var(--text-muted); animation: none; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+
+
+  /* 진행률 바 */
+  .progress-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .progress-label-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .progress-remain {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-sub);
+    font-weight: 400;
+  }
+  .progress-track {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 100px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 1s linear, background 0.6s ease;
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0;
+    width: 20px; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.4));
+    border-radius: 100px;
+  }
+  .progress-fill.morning { background: linear-gradient(90deg, #1d4ed8, #3b82f6); }
+  .progress-fill.lunch { background: linear-gradient(90deg, #b45309, #f59e0b); }
+  .progress-fill.afternoon { background: linear-gradient(90deg, #065f46, #10b981); }
+  .progress-fill.overtime { background: linear-gradient(90deg, #991b1b, #ef4444); }
+  .progress-fill.off { background: rgba(100,116,139,0.3); }
+
+  /* 일과 타임라인 */
+  .timeline-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .timeline {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+  }
+  .timeline-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+  }
+  .tl-bar {
+    height: 8px;
+    border-radius: 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tl-bar::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  }
+  .tl-bar.active::after { animation: shimmer 2s infinite; }
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+  .tl-bar.morning-bar { background: rgba(59,130,246,0.3); }
+  .tl-bar.morning-bar.active, .tl-bar.morning-bar.done { background: #3b82f6; }
+  .tl-bar.lunch-bar { background: rgba(245,158,11,0.3); }
+  .tl-bar.lunch-bar.active, .tl-bar.lunch-bar.done { background: #f59e0b; }
+  .tl-bar.afternoon-bar { background: rgba(16,185,129,0.3); }
+  .tl-bar.afternoon-bar.active, .tl-bar.afternoon-bar.done { background: #10b981; }
+
+  .tl-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .tl-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+  }
+
+  /* 스트레칭 오버레이 */
+  .stretch-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .stretch-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .stretch-card {
+    background: var(--surface);
+    border: 1px solid rgba(168,85,247,0.3);
+    border-radius: 24px;
+    padding: 48px 56px;
+    text-align: center;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: 0 0 80px rgba(168,85,247,0.2);
+    animation: stretch-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform: scale(0.8);
+  }
+  @keyframes stretch-in {
+    to { transform: scale(1); }
+  }
+  .stretch-icon-wrap {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(168,85,247,0.12);
+    border: 1px solid rgba(168,85,247,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 36px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .stretch-title {
+    font-size: 24px;
+    font-weight: 500;
+    color: #d8b4fe;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+  .stretch-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .stretch-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 48px;
+    font-weight: 300;
+    color: #a855f7;
+    line-height: 1;
+    margin-bottom: 8px;
+    transition: opacity 0.3s;
+  }
+  .stretch-timer-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .stretch-btn {
+    background: rgba(168,85,247,0.15);
+    border: 1px solid rgba(168,85,247,0.35);
+    color: #d8b4fe;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 28px;
+    border-radius: 100px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+  .stretch-btn:hover { background: rgba(168,85,247,0.25); transform: translateY(-1px); }
+
+  /* 주간 달력 */
+  .week-calendar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+  .week-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .week-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .week-range {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .week-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .week-day-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .week-day-num {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-sub);
+    transition: all 0.3s ease;
+  }
+  .week-day.today .week-day-name { color: var(--text); }
+  .week-day.today .week-day-num {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .clock-card.morning  ~ * .week-day.today .week-day-num,
+  .week-day.today .week-day-num { background: #3b82f6; }
+  .week-day.weekend .week-day-name,
+  .week-day.weekend .week-day-num { color: rgba(239,68,68,0.55); }
+  .week-day.today.weekend .week-day-num { background: #ef4444; color: #fff; }
+  .week-day-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: transparent;
+  }
+  .week-day.today .week-day-dot { background: #3b82f6; }
+  .week-day.weekend .week-day-dot { background: rgba(239,68,68,0.4); }
+
+  /* 하단 통계 */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.5;
+    letter-spacing: 0.5px;
+  }
+
+  /* clock-card 패딩 조정 */
+  .clock-card { padding: 28px 40px 32px; }
+
+  /* ── 화면보호기 모드 ── */
+  #ss-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+  #ss-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+    cursor: none;
+  }
+
+  /* 화면보호기 내부 시계 — 크게 */
+  .ss-clock-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .ss-flip-clock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    perspective: 600px;
+  }
+  .ss-flip-unit { display: flex; gap: 5px; }
+
+  .ss-flip-card {
+    position: relative;
+    width: 100px;
+    height: 132px;
+    border-radius: 12px;
+    perspective: 500px;
+  }
+  .ss-f-top {
+    position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%;
+    clip-path: inset(0 0 50% 0);
+    background: #f0f2f5;
+    border-radius: 12px 12px 0 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; backface-visibility: hidden; z-index: 1;
+  }
+  .ss-f-bot {
+    position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%;
+    clip-path: inset(50% 0 0 0);
+    background: #e2e6eb;
+    border-radius: 0 0 12px 12px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; backface-visibility: hidden; z-index: 1;
+  }
+  .ss-f-top span, .ss-f-bot span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 96px;
+    font-weight: 800;
+    line-height: 1;
+    color: #000;
+    display: block;
+    user-select: none;
+  }
+  .ss-f-divider {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; background: rgba(0,0,0,0.12);
+    z-index: 10; margin-top: -1px;
+  }
+  .ss-upper-leave, .ss-lower-enter {
+    position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; backface-visibility: hidden; z-index: 4;
+  }
+  .ss-upper-leave {
+    clip-path: inset(0 0 50% 0);
+    transform-origin: center bottom;
+    border-radius: 12px 12px 0 0;
+    background: #f0f2f5;
+  }
+  .ss-lower-enter {
+    clip-path: inset(50% 0 0 0);
+    transform-origin: center top;
+    border-radius: 0 0 12px 12px;
+    background: #e2e6eb;
+  }
+  .ss-upper-leave span, .ss-lower-enter span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 96px; font-weight: 800; line-height: 1;
+    color: #000; display: block; user-select: none;
+  }
+  .ss-sep {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 80px; font-weight: 300;
+    color: rgba(255,255,255,0.3);
+    align-self: center; margin-bottom: 4px;
+    animation: sep-blink 1s step-end infinite;
+  }
+  .ss-date {
+    font-size: 15px; font-weight: 400;
+    color: var(--text-muted); letter-spacing: 1px;
+  }
+  .ss-session-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 22px; border-radius: 100px;
+    font-size: 14px; font-weight: 500; letter-spacing: 0.5px;
+    transition: all 0.6s ease;
+  }
+  .ss-session-badge.morning  { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .ss-session-badge.lunch    { background: rgba(245,158,11,0.12);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .ss-session-badge.afternoon{ background: rgba(16,185,129,0.12);  color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .ss-session-badge.overtime { background: rgba(239,68,68,0.12);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .ss-session-badge.off      { background: rgba(100,116,139,0.12); color: var(--text-muted); border: 1px solid rgba(100,116,139,0.2); }
+  .ss-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+  .ss-session-badge.morning  .ss-dot { background: #3b82f6; }
+  .ss-session-badge.lunch    .ss-dot { background: #f59e0b; }
+  .ss-session-badge.afternoon.ss-dot { background: #10b981; }
+  .ss-session-badge.overtime .ss-dot { background: #ef4444; }
+  .ss-session-badge.off      .ss-dot { background: var(--text-muted); animation: none; }
+
+  #ss-hint-text {
+    font-size: 11px; color: rgba(255,255,255,0.15);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="container">
+
+
+  <!-- 메인 시계 -->
+  <div class="clock-card" id="clockCard">
+    <div class="current-date" id="currentDate"></div>
+
+    <!-- 플립 시계: 현재 시각 -->
+    <div class="flip-clock" id="mainClock">
+      <div class="flip-unit" id="flip-hh">
+        <div class="flip-card">
+          <div class="f-top"><span>0</span></div>
+          <div class="f-bot"><span>0</span></div>
+          <div class="f-divider"></div>
+        </div>
+        <div class="flip-card">
+          <div class="f-top"><span>0</span></div>
+          <div class="f-bot"><span>0</span></div>
+          <div class="f-divider"></div>
+        </div>
+      </div>
+      <div class="flip-sep">:</div>
+      <div class="flip-unit" id="flip-mm">
+        <div class="flip-card">
+          <div class="f-top"><span>0</span></div>
+          <div class="f-bot"><span>0</span></div>
+          <div class="f-divider"></div>
+        </div>
+        <div class="flip-card">
+          <div class="f-top"><span>0</span></div>
+          <div class="f-bot"><span>0</span></div>
+          <div class="f-divider"></div>
+        </div>
+      </div>
+      <div class="flip-sep">:</div>
+      <div class="flip-unit" id="flip-ss">
+        <div class="flip-card">
+          <div class="f-top"><span>0</span></div>
+          <div class="f-bot"><span>0</span></div>
+          <div class="f-divider"></div>
+        </div>
+        <div class="flip-card">
+          <div class="f-top"><span>0</span></div>
+          <div class="f-bot"><span>0</span></div>
+          <div class="f-divider"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="session-badge off" id="sessionBadge" style="margin-top:20px;">
+      <span class="badge-dot"></span>
+      <span id="sessionText">업무 시간 외</span>
+    </div>
+
+
+  </div>
+
+  <!-- 진행률 -->
+  <div class="progress-section">
+    <div class="progress-label">
+      <span class="progress-label-text" id="progressLabel">현재 세션 진행률</span>
+      <span class="progress-remain" id="progressRemain">--:--</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill off" id="progressFill" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <!-- 주간 달력 -->
+  <div class="week-calendar">
+    <div class="week-header">
+      <span class="week-title">이번 주</span>
+      <span class="week-range" id="weekRange"></span>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- 타임라인 -->
+  <div class="timeline-section">
+    <div class="section-title">오늘의 일과</div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <!-- 통계 -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statWorked">0h 0m</div>
+      <div class="stat-label">근무 경과</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statRemain">—</div>
+      <div class="stat-label">퇴근까지</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statStretch">0</div>
+      <div class="stat-label">스트레칭 횟수</div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    매시 50분 · 스트레칭 알림 &nbsp;|&nbsp;
+    <span id="ss-btn" onclick="enterScreensaver()" style="cursor:pointer; text-decoration:underline; text-underline-offset:3px;">화면보호기 시작 (F)</span>
+  </div>
+</div>
+
+<!-- 화면보호기 오버레이 -->
+<div id="ss-overlay">
+  <div class="ss-clock-wrap">
+    <div class="ss-flip-clock">
+      <div class="ss-flip-unit" id="ss-hh">
+        <div class="ss-flip-card">
+          <div class="ss-f-top"><span>0</span></div>
+          <div class="ss-f-bot"><span>0</span></div>
+          <div class="ss-f-divider"></div>
+        </div>
+        <div class="ss-flip-card">
+          <div class="ss-f-top"><span>0</span></div>
+          <div class="ss-f-bot"><span>0</span></div>
+          <div class="ss-f-divider"></div>
+        </div>
+      </div>
+      <div class="ss-sep">:</div>
+      <div class="ss-flip-unit" id="ss-mm">
+        <div class="ss-flip-card">
+          <div class="ss-f-top"><span>0</span></div>
+          <div class="ss-f-bot"><span>0</span></div>
+          <div class="ss-f-divider"></div>
+        </div>
+        <div class="ss-flip-card">
+          <div class="ss-f-top"><span>0</span></div>
+          <div class="ss-f-bot"><span>0</span></div>
+          <div class="ss-f-divider"></div>
+        </div>
+      </div>
+      <div class="ss-sep">:</div>
+      <div class="ss-flip-unit" id="ss-ss">
+        <div class="ss-flip-card">
+          <div class="ss-f-top"><span>0</span></div>
+          <div class="ss-f-bot"><span>0</span></div>
+          <div class="ss-f-divider"></div>
+        </div>
+        <div class="ss-flip-card">
+          <div class="ss-f-top"><span>0</span></div>
+          <div class="ss-f-bot"><span>0</span></div>
+          <div class="ss-f-divider"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ss-date" id="ss-date"></div>
+    <div class="ss-session-badge off" id="ss-badge">
+      <span class="ss-dot"></span>
+      <span id="ss-badge-text">업무 시간 외</span>
+    </div>
+  </div>
+  <div id="ss-hint-text">아무 키나 누르면 해제됩니다</div>
+</div>
+<!-- 스트레칭 오버레이 -->
+<div class="stretch-overlay" id="stretchOverlay">
+  <div class="stretch-card">
+    <div class="stretch-icon-wrap">🧘</div>
+    <div class="stretch-title">잠깐, 스트레칭 합시다!</div>
+    <div class="stretch-subtitle">
+      장시간 앉아있으면 집중력과 건강이 모두 저하됩니다.<br>
+      잠시 몸을 움직여 컨디션을 회복하세요.
+    </div>
+    <div class="stretch-timer" id="stretchCountdown">60</div>
+    <div class="stretch-timer-label">초 후 자동 닫힘</div>
+    <button class="stretch-btn" onclick="closeStretch()">완료했어요 ✓</button>
+  </div>
+</div>
+
+<script>
+const SCHEDULE = [
+  { id: 'morning',   label: '오전 근무',  start: [9,0],  end: [11,30], color: 'morning'   },
+  { id: 'lunch',     label: '점심 시간',  start: [11,30],end: [12,30], color: 'lunch'     },
+  { id: 'afternoon', label: '오후 근무',  start: [12,30],end: [18,0],  color: 'afternoon' },
+];
+
+const DAYS = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+
+let stretchCount = 0;
+let stretchShownHour = -1;
+let stretchTimer = null;
+let stretchRemain = 0;
+let bgCanvas, bgCtx, particles = [];
+
+function toMin(h,m) { return h*60+m; }
+
+function getSession(h, m) {
+  const now = toMin(h, m);
+  for (const s of SCHEDULE) {
+    const st = toMin(...s.start), en = toMin(...s.end);
+    if (now >= st && now < en) return { ...s, progress: (now-st)/(en-st), elapsed: now-st, total: en-st };
+  }
+  return null;
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function buildCalendar() {
+  const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+  const now = new Date();
+  const todayDate = now.getDate();
+  const todayDay = now.getDay(); // 0=일 ~ 6=토
+
+  // 이번 주 월요일 기준 (일요일 시작)
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - todayDay); // 일요일로
+
+  const grid = document.getElementById('weekGrid');
+  const range = document.getElementById('weekRange');
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  range.textContent = `${fmt(weekStart)} — ${fmt(weekEnd)}`;
+
+  grid.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    const dayNum = d.getDate();
+    const isToday = dayNum === todayDate && d.getMonth() === now.getMonth();
+    const isWeekend = i === 0 || i === 6;
+
+    const cell = document.createElement('div');
+    cell.className = 'week-day' + (isToday ? ' today' : '') + (isWeekend ? ' weekend' : '');
+    cell.innerHTML = `
+      <span class="week-day-name">${DAY_NAMES[i]}</span>
+      <div class="week-day-num">${String(dayNum).padStart(2,'0')}</div>
+      <div class="week-day-dot"></div>
+    `;
+    grid.appendChild(cell);
+  }
+}
+
+function buildTimeline() {
+  const tl = document.getElementById('timeline');
+  const total = toMin(18,0) - toMin(9,0);
+  tl.innerHTML = SCHEDULE.map(s => {
+    const len = toMin(...s.end) - toMin(...s.start);
+    const pct = (len/total*100).toFixed(1);
+    return `<div class="timeline-block" style="flex: ${pct} 0 0%">
+      <div class="tl-bar ${s.color}-bar" id="tl_${s.id}"></div>
+      <div class="tl-label">${s.label}</div>
+      <div class="tl-time">${pad(s.start[0])}:${pad(s.start[1])} ~ ${pad(s.end[0])}:${pad(s.end[1])}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateTimeline(session) {
+  SCHEDULE.forEach(s => {
+    const bar = document.getElementById('tl_'+s.id);
+    if (!bar) return;
+    bar.classList.remove('active','done');
+    if (session && session.id === s.id) bar.classList.add('active');
+    else if (session) {
+      const idx = SCHEDULE.findIndex(x => x.id===s.id);
+      const cur = SCHEDULE.findIndex(x => x.id===session.id);
+      if (idx < cur) bar.classList.add('done');
+    } else {
+      const h = new Date().getHours(), m = new Date().getMinutes();
+      if (toMin(h,m) >= toMin(...s.end)) bar.classList.add('done');
+    }
+  });
+}
+
+function updateStats(session, h, m) {
+  const workedMins = (() => {
+    const now = toMin(h,m);
+    if (now < toMin(9,0)) return 0;
+    const morning = Math.min(now, toMin(11,30)) - toMin(9,0);
+    const afternoon = now > toMin(12,30) ? Math.min(now, toMin(18,0)) - toMin(12,30) : 0;
+    return Math.max(0, morning) + Math.max(0, afternoon);
+  })();
+  const wh = Math.floor(workedMins/60), wm = workedMins%60;
+  document.getElementById('statWorked').textContent = `${wh}h ${wm}m`;
+
+  const now = toMin(h,m);
+  const endWork = toMin(18,0);
+  if (now < endWork) {
+    const diff = endWork - now;
+    const rh = Math.floor(diff/60), rm = diff%60;
+    document.getElementById('statRemain').textContent = `${rh}h ${rm}m`;
+  } else {
+    document.getElementById('statRemain').textContent = '퇴근!';
+  }
+  document.getElementById('statStretch').textContent = stretchCount;
+}
+
+function tick() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+
+  setFlip('flip-hh', pad(h));
+  setFlip('flip-mm', pad(m));
+  setFlip('flip-ss', pad(s));
+
+  const dateStr = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 ${DAYS[now.getDay()]}`;
+  document.getElementById('currentDate').textContent = dateStr;
+
+  const session = getSession(h, m);
+  const card = document.getElementById('clockCard');
+  const badge = document.getElementById('sessionBadge');
+  const badgeText = document.getElementById('sessionText');
+
+  card.className = 'clock-card ' + (session ? session.color : (toMin(h,m) >= toMin(18,0) ? 'overtime' : 'off'));
+  badge.className = 'session-badge ' + (session ? session.color : (toMin(h,m) >= toMin(18,0) ? 'overtime' : 'off'));
+  badgeText.textContent = session ? session.label : (toMin(h,m) >= toMin(18,0) ? '퇴근 시간 🎉' : '업무 시간 외');
+
+  const fill = document.getElementById('progressFill');
+  const remain = document.getElementById('progressRemain');
+  const plabel = document.getElementById('progressLabel');
+
+  if (session) {
+    const pct = (session.progress * 100).toFixed(1);
+    fill.style.width = pct + '%';
+    fill.className = 'progress-fill ' + session.color;
+    const remMins = session.total - session.elapsed;
+    remain.textContent = `${Math.floor(remMins/60)}h ${remMins%60}m 남음`;
+    plabel.textContent = session.label + ' 진행률';
+  } else if (toMin(h,m) >= toMin(18,0)) {
+    fill.style.width = '100%';
+    fill.className = 'progress-fill overtime';
+    remain.textContent = '퇴근!';
+    plabel.textContent = '퇴근 완료';
+  } else {
+    fill.style.width = '0%';
+    fill.className = 'progress-fill off';
+    remain.textContent = '--:--';
+    plabel.textContent = '대기 중';
+  }
+
+  updateTimeline(session);
+  updateStats(session, h, m);
+
+  // 스트레칭 알림: 매시 50분 (1분간 유지)
+  if (m === 50 && h !== stretchShownHour && !document.getElementById('stretchOverlay').classList.contains('visible')) {
+    stretchShownHour = h;
+    showStretch();
+  }
+}
+
+
+// ── 플립 시계 엔진 ──
+const flipState = {};
+
+function setFlip(unitId, val) {
+  const prev = flipState[unitId];
+  // 첫 호출: 애니메이션 없이 즉시 세팅
+  if (prev === undefined) {
+    flipState[unitId] = val;
+    const unit = document.getElementById(unitId);
+    if (!unit) return;
+    unit.querySelectorAll('.flip-card').forEach((card, i) => {
+      const d = val[i] ?? '0';
+      card.querySelector('.f-top span').textContent = d;
+      card.querySelector('.f-bot span').textContent = d;
+    });
+    return;
+  }
+  if (prev === val) return;
+  flipState[unitId] = val;
+
+  const unit = document.getElementById(unitId);
+  if (!unit) return;
+  const cards = unit.querySelectorAll('.flip-card');
+
+  for (let i = 0; i < 2; i++) {
+    const prevDigit = prev[i] ?? '0';
+    const nextDigit = val[i] ?? '0';
+    if (prevDigit === nextDigit) continue;
+
+    const card = cards[i];
+    const topSpan = card.querySelector('.f-top span');
+    const botSpan = card.querySelector('.f-bot span');
+
+    // 정지 패널 업데이트: top=이전(배경으로), bot=새 숫자(미리 대기)
+    topSpan.textContent = prevDigit;
+    botSpan.textContent = nextDigit;
+
+    const FOLD_DUR   = 0.22;   // 위 패널 접히는 시간 (s)
+    const UNFOLD_DEL = 0.20;   // 위 완료 직전 아래 시작 (살짝 겹쳐 자연스럽게)
+    const UNFOLD_DUR = 0.22;   // 아래 패널 펼쳐지는 시간 (s)
+    const TOTAL_MS   = (UNFOLD_DEL + UNFOLD_DUR) * 1000 + 80; // 정리 타이머
+
+    // upper-leave: 이전 숫자의 위 절반이 앞으로 접힘
+    const ul = document.createElement('div');
+    ul.className = 'f-upper-leave';
+    const ulSpan = document.createElement('span');
+    ulSpan.textContent = prevDigit;
+    ul.appendChild(ulSpan);
+    ul.style.animation = `foldDown ${FOLD_DUR}s cubic-bezier(0.4,0,1,1) forwards`;
+
+    // lower-enter: 새 숫자의 아래 절반이 뒤에서 펼쳐짐
+    const le = document.createElement('div');
+    le.className = 'f-lower-enter';
+    const leSpan = document.createElement('span');
+    leSpan.textContent = nextDigit;
+    le.appendChild(leSpan);
+    le.style.transform = 'rotateX(90deg)';
+    le.style.animation = `unfoldDown ${UNFOLD_DUR}s cubic-bezier(0,0,0.6,1) ${UNFOLD_DEL}s forwards`;
+
+    card.appendChild(ul);
+    card.appendChild(le);
+
+    // 애니 완료 후 top도 새 숫자로 교체, 오버레이 제거
+    setTimeout(() => {
+      topSpan.textContent = nextDigit;
+      ul.remove();
+      le.remove();
+    }, TOTAL_MS);
+  }
+}
+
+function showStretch() {
+  stretchCount++;
+  stretchRemain = 60;
+  document.getElementById('stretchCountdown').textContent = stretchRemain;
+  document.getElementById('stretchOverlay').classList.add('visible');
+
+  stretchTimer = setInterval(() => {
+    stretchRemain--;
+    document.getElementById('stretchCountdown').textContent = stretchRemain;
+    if (stretchRemain <= 0) closeStretch();
+  }, 1000);
+}
+
+function closeStretch() {
+  clearInterval(stretchTimer);
+  document.getElementById('stretchOverlay').classList.remove('visible');
+}
+
+// 배경 파티클
+function initParticles() {
+  bgCanvas = document.getElementById('bg-canvas');
+  bgCtx = bgCanvas.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 60; i++) particles.push(makeParticle());
+  animateParticles();
+}
+
+function resize() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+
+function makeParticle() {
+  return {
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: Math.random() * 1.5 + 0.3,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    a: Math.random() * 0.5 + 0.1
+  };
+}
+
+function animateParticles() {
+  bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+  const session = getSession(new Date().getHours(), new Date().getMinutes());
+  const colors = { morning:'#3b82f6', lunch:'#f59e0b', afternoon:'#10b981' };
+  const col = session ? colors[session.color] : '#64748b';
+
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > bgCanvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > bgCanvas.height) p.vy *= -1;
+    bgCtx.beginPath();
+    bgCtx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    bgCtx.fillStyle = col;
+    bgCtx.globalAlpha = p.a;
+    bgCtx.fill();
+  });
+  bgCtx.globalAlpha = 1;
+  requestAnimationFrame(animateParticles);
+}
+
+buildTimeline();
+buildCalendar();
+initParticles();
+tick();
+setInterval(tick, 1000);
+
+// ── 화면보호기 엔진 (수동 진입) ──
+let ssActive = false;
+const ssFlipState = {};
+
+function ssSetFlip(unitId, val) {
+  const prev = ssFlipState[unitId];
+  if (prev === undefined) {
+    ssFlipState[unitId] = val;
+    const unit = document.getElementById(unitId);
+    if (!unit) return;
+    unit.querySelectorAll('.ss-flip-card').forEach((card, i) => {
+      const d = val[i] ?? '0';
+      card.querySelector('.ss-f-top span').textContent = d;
+      card.querySelector('.ss-f-bot span').textContent = d;
+    });
+    return;
+  }
+  if (prev === val) return;
+  ssFlipState[unitId] = val;
+
+  const unit = document.getElementById(unitId);
+  if (!unit) return;
+  const cards = unit.querySelectorAll('.ss-flip-card');
+
+  for (let i = 0; i < 2; i++) {
+    const prevD = prev[i] ?? '0';
+    const nextD = val[i] ?? '0';
+    if (prevD === nextD) continue;
+
+    const card = cards[i];
+    const topSpan = card.querySelector('.ss-f-top span');
+    const botSpan = card.querySelector('.ss-f-bot span');
+    topSpan.textContent = prevD;
+    botSpan.textContent = nextD;
+
+    const ul = document.createElement('div');
+    ul.className = 'ss-upper-leave';
+    const uls = document.createElement('span'); uls.textContent = prevD;
+    ul.appendChild(uls);
+    ul.style.animation = 'foldDown 0.22s cubic-bezier(0.4,0,1,1) forwards';
+
+    const le = document.createElement('div');
+    le.className = 'ss-lower-enter';
+    const les = document.createElement('span'); les.textContent = nextD;
+    le.appendChild(les);
+    le.style.transform = 'rotateX(90deg)';
+    le.style.animation = 'unfoldDown 0.22s cubic-bezier(0,0,0.6,1) 0.20s forwards';
+
+    card.appendChild(ul); card.appendChild(le);
+    setTimeout(() => { topSpan.textContent = nextD; ul.remove(); le.remove(); }, 500);
+  }
+}
+
+function ssTick() {
+  if (!ssActive) return;
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+  ssSetFlip('ss-hh', pad(h));
+  ssSetFlip('ss-mm', pad(m));
+  ssSetFlip('ss-ss', pad(s));
+
+  document.getElementById('ss-date').textContent =
+    `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 ${DAYS[now.getDay()]}`;
+
+  const session = getSession(h, m);
+  const badge = document.getElementById('ss-badge');
+  const badgeText = document.getElementById('ss-badge-text');
+  const cls = session ? session.color : (toMin(h,m) >= toMin(18,0) ? 'overtime' : 'off');
+  badge.className = 'ss-session-badge ' + cls;
+  badgeText.textContent = session ? session.label
+    : (toMin(h,m) >= toMin(18,0) ? '퇴근 시간 🎉' : '업무 시간 외');
+}
+setInterval(ssTick, 1000);
+
+function enterScreensaver() {
+  if (ssActive) return;
+  ssActive = true;
+  Object.keys(ssFlipState).forEach(k => delete ssFlipState[k]);
+  ssTick();
+  document.getElementById('ss-overlay').classList.add('active');
+  try { document.documentElement.requestFullscreen?.(); } catch(e) {}
+}
+
+function exitScreensaver() {
+  if (!ssActive) return;
+  ssActive = false;
+  document.getElementById('ss-overlay').classList.remove('active');
+  try { document.exitFullscreen?.(); } catch(e) {}
+}
+
+// 화면보호기 해제: 마우스 클릭 또는 아무 키
+document.addEventListener('keydown', e => {
+  if (ssActive) { exitScreensaver(); return; }
+  // F 키로 진입
+  if (e.key === 'f' || e.key === 'F') enterScreensaver();
+});
+document.getElementById('ss-overlay').addEventListener('click', exitScreensaver);
+
+</script>
+</body>
+</html>

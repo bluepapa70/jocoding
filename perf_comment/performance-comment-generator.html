@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>성과보고 승인 코멘트 생성기 · AhnLab</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+      background: #F5F7FA;
+      min-height: 100vh;
+    }
+    textarea:focus { outline: none; }
+    button { font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useCallback } = React;
+
+    const API_URL = "http://localhost:8000/api/generate-comment";
+
+    const AHNLAB_BLUE   = "#003087";
+    const AHNLAB_ACCENT = "#0066CC";
+    const AHNLAB_LIGHT  = "#E8F0FB";
+    const AHNLAB_GRAY   = "#F5F7FA";
+    const BORDER        = "#D0D8E8";
+
+    const PLACEHOLDER = `예시:\n• OSS 취약점 관리 시스템 고도화 완료\n• QA 자동화 파이프라인 CI 연동 진행 중 (80%)\n• 특허 출원 2건 완료\n• 전사 개발 프로세스 정책 개정 작업 착수\n• 클라우드 VM 비용 최적화 15% 달성`;
+
+    const TONES = [
+      { id: "warm",     label: "친근 · 격려형",  desc: "따뜻하고 동기부여 중심" },
+      { id: "formal",   label: "공식 · 격식체",  desc: "보고서 형식, 간결·정중" },
+      { id: "coaching", label: "코칭 · 발전형",  desc: "개선점과 성장 방향 강조" },
+    ];
+
+    const ELEMENTS = [
+      { id: "praise",    label: "성과 인정 · 칭찬",    icon: "🏆" },
+      { id: "feedback",  label: "개선 제안 · 피드백",  icon: "💡" },
+      { id: "direction", label: "다음 목표 방향",       icon: "🎯" },
+      { id: "risk",      label: "리스크 · 주의사항",   icon: "⚠️" },
+    ];
+
+    function Section({ title, children }) {
+      return (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 700, color: AHNLAB_BLUE,
+            marginBottom: 10, letterSpacing: "-0.2px",
+          }}>
+            {title}
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    function App() {
+      const [performanceText, setPerformanceText] = useState("");
+      const [tone,            setTone]            = useState("warm");
+      const [elements,        setElements]        = useState(["praise", "feedback", "direction", "risk"]);
+      const [comment,         setComment]         = useState("");
+      const [loading,         setLoading]         = useState(false);
+      const [error,           setError]           = useState("");
+      const [copied,          setCopied]          = useState(false);
+
+      const toggleElement = (id) => {
+        setElements(prev =>
+          prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+        );
+      };
+
+      const buildPrompt = () => {
+        const toneDesc = {
+          warm:     "친근하고 따뜻한 톤, 격려와 동기부여 중심",
+          formal:   "공식적이고 격식체, 간결하고 정중한 문체",
+          coaching: "코칭 관점, 성장과 개선 방향을 구체적으로 강조",
+        }[tone];
+
+        const elementDescs = {
+          praise:    "성과 인정 및 칭찬 (구체적으로 어떤 점이 좋았는지)",
+          feedback:  "개선 제안 또는 피드백 (더 잘할 수 있는 방향)",
+          direction: "다음 목표나 집중 방향 제시",
+          risk:      "리스크나 주의사항 언급 (있다면)",
+        };
+
+        const selectedElements = elements.map(e => `- ${elementDescs[e]}`).join("\n");
+
+        return `당신은 안랩(AhnLab) 품질·개발 인프라 Division Manager입니다.
+팀원이 제출한 성과보고를 검토하고 승인 코멘트를 작성합니다.
+
+[팀원 성과 내용]
+${performanceText}
+
+[작성 조건]
+- 톤: ${toneDesc}
+- 포함할 요소:
+${selectedElements}
+- 분량: 3~5문장의 자연스러운 산문 (bullet 없이)
+- 존댓말 사용 (팀원에게 직접 쓰는 말투)
+- 안랩의 보안 SW / QA 인프라 / 개발 프로세스 업무 맥락 반영
+- 코멘트 본문만 출력 (제목, 서명, 추가 설명 불필요)`;
+      };
+
+      const generateComment = useCallback(async () => {
+        if (!performanceText.trim()) {
+          setError("성과 내용을 입력해 주세요.");
+          return;
+        }
+        if (elements.length === 0) {
+          setError("코멘트에 포함할 요소를 하나 이상 선택해 주세요.");
+          return;
+        }
+        setError("");
+        setLoading(true);
+        setComment("");
+
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: buildPrompt() }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData?.detail || `HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          if (!data.text) throw new Error("응답이 비어 있습니다.");
+          setComment(data.text);
+        } catch (e) {
+          setError(`코멘트 생성 실패: ${e.message}`);
+        } finally {
+          setLoading(false);
+        }
+      }, [performanceText, tone, elements]);
+
+      const copyToClipboard = () => {
+        navigator.clipboard.writeText(comment).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      };
+
+      return (
+        <div style={{
+          fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif",
+          background: AHNLAB_GRAY,
+          minHeight: "100vh",
+          padding: "32px 16px",
+        }}>
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+
+            {/* Header */}
+            <div style={{
+              background: AHNLAB_BLUE,
+              borderRadius: "16px 16px 0 0",
+              padding: "28px 32px 24px",
+              color: "#fff",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: "rgba(255,255,255,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 20,
+                }}>✍️</div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.3px" }}>
+                    성과보고 승인 코멘트 생성기
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>
+                    AhnLab · 품질&amp;개발인프라 Division Manager
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{
+              background: "#fff",
+              borderRadius: "0 0 16px 16px",
+              padding: "28px 32px",
+              boxShadow: "0 4px 20px rgba(0,48,135,0.08)",
+            }}>
+
+              {/* 성과 내용 입력 */}
+              <Section title="① 성과 내용 입력">
+                <textarea
+                  value={performanceText}
+                  onChange={e => setPerformanceText(e.target.value)}
+                  placeholder={PLACEHOLDER}
+                  style={{
+                    width: "100%", minHeight: 140,
+                    padding: "14px 16px",
+                    border: `1.5px solid ${BORDER}`,
+                    borderRadius: 10,
+                    fontSize: 13.5,
+                    lineHeight: 1.7,
+                    color: "#222",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={e => e.target.style.borderColor = AHNLAB_ACCENT}
+                  onBlur={e => e.target.style.borderColor = BORDER}
+                />
+              </Section>
+
+              {/* 톤 선택 */}
+              <Section title="② 코멘트 톤 선택">
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {TONES.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTone(t.id)}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: 8,
+                        border: `1.5px solid ${tone === t.id ? AHNLAB_ACCENT : BORDER}`,
+                        background: tone === t.id ? AHNLAB_LIGHT : "#fff",
+                        color: tone === t.id ? AHNLAB_BLUE : "#555",
+                        fontWeight: tone === t.id ? 700 : 400,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{t.label}</div>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </Section>
+
+              {/* 포함 요소 선택 */}
+              <Section title="③ 포함할 요소 선택">
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {ELEMENTS.map(el => {
+                    const active = elements.includes(el.id);
+                    return (
+                      <button
+                        key={el.id}
+                        onClick={() => toggleElement(el.id)}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 20,
+                          border: `1.5px solid ${active ? AHNLAB_ACCENT : BORDER}`,
+                          background: active ? AHNLAB_ACCENT : "#fff",
+                          color: active ? "#fff" : "#666",
+                          fontSize: 12.5,
+                          fontWeight: active ? 600 : 400,
+                          cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 5,
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <span>{el.icon}</span>
+                        <span>{el.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Section>
+
+              {/* 에러 */}
+              {error && (
+                <div style={{
+                  background: "#FFF3F3", border: "1px solid #FFCCCC",
+                  borderRadius: 8, padding: "10px 14px",
+                  color: "#CC0000", fontSize: 13, marginBottom: 16,
+                }}>{error}</div>
+              )}
+
+              {/* 생성 버튼 */}
+              <button
+                onClick={generateComment}
+                disabled={loading}
+                style={{
+                  width: "100%", padding: "15px",
+                  background: loading ? "#9AB4D4" : AHNLAB_BLUE,
+                  color: "#fff", border: "none", borderRadius: 10,
+                  fontSize: 15, fontWeight: 700,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  letterSpacing: "0.3px",
+                  transition: "background 0.2s",
+                  marginBottom: 24,
+                }}
+              >
+                {loading ? "⏳ 코멘트 생성 중..." : "✨ 승인 코멘트 생성"}
+              </button>
+
+              {/* 결과 */}
+              {comment && (
+                <div style={{
+                  background: AHNLAB_LIGHT,
+                  border: `1.5px solid ${AHNLAB_ACCENT}`,
+                  borderRadius: 12, padding: "20px 22px",
+                }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: AHNLAB_ACCENT,
+                    letterSpacing: "0.5px", marginBottom: 12, textTransform: "uppercase",
+                  }}>
+                    ✅ 생성된 승인 코멘트
+                  </div>
+                  <p style={{
+                    fontSize: 14.5, lineHeight: 1.85, color: "#1a1a2e",
+                    margin: 0, whiteSpace: "pre-wrap",
+                  }}>
+                    {comment}
+                  </p>
+                  <div style={{
+                    display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end",
+                  }}>
+                    <button
+                      onClick={generateComment}
+                      style={{
+                        padding: "7px 16px", borderRadius: 7,
+                        border: `1.5px solid ${AHNLAB_ACCENT}`,
+                        background: "#fff", color: AHNLAB_ACCENT,
+                        fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                      }}
+                    >
+                      🔄 재생성
+                    </button>
+                    <button
+                      onClick={copyToClipboard}
+                      style={{
+                        padding: "7px 16px", borderRadius: 7,
+                        border: "none",
+                        background: copied ? "#28A745" : AHNLAB_ACCENT,
+                        color: "#fff",
+                        fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                        transition: "background 0.2s",
+                      }}
+                    >
+                      {copied ? "✓ 복사됨!" : "📋 클립보드 복사"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              textAlign: "center", fontSize: 11, color: "#aaa", marginTop: 16,
+            }}>
+              AhnLab · 품질&amp;개발인프라실 내부 업무 도구
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flip Timer</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap');
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --card-w: 110px; --card-h: 130px; --card-radius: 10px;
+  --card-gap: 8px; --font-size: 96px;
+  --bg: #12121f; --card-top-bg: #1c2f5e; --card-bot-bg: #152448;
+  --fold-color: #060a14; --text-color: #dce8ff;
+  --colon-color: #4a6fa5; --highlight: #e94560;
+  --overtime-bg: #1a0808; --overtime-text: #ff8080; --overtime-colon: #7a2020;
+  --transition-speed: 0.5s;
+}
+
+body {
+  background-color: var(--bg); color: var(--text-color);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center;
+  transition: background-color var(--transition-speed);
+}
+
+#app { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+
+/* ===== Clock ===== */
+#clock-container { display: flex; align-items: center; gap: 24px; user-select: none; }
+
+.colon {
+  font-size: 64px; font-weight: 900; color: var(--colon-color);
+  line-height: 1; margin-bottom: 26px; letter-spacing: -2px;
+  transition: color var(--transition-speed);
+  text-shadow: 0 0 12px rgba(74,111,165,0.5);
+}
+
+.unit-group { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.digits { display: flex; gap: var(--card-gap); }
+
+.unit-label {
+  font-size: 12px; font-weight: 600; color: var(--text-color);
+  opacity: 0.4; letter-spacing: 0.12em; text-transform: uppercase;
+  transition: color var(--transition-speed);
+}
+
+/* ===== Flip Unit & Card ===== */
+.flip-unit { perspective: 600px; perspective-origin: center 45%; }
+
+.card {
+  position: relative; width: var(--card-w); height: var(--card-h);
+  filter: drop-shadow(0 10px 28px rgba(0,0,0,0.7));
+}
+
+.card::after {
+  content: ''; position: absolute; left: 0; right: 0;
+  top: calc(50% - 1px); height: 2px;
+  background: var(--fold-color); z-index: 10; pointer-events: none;
+}
+
+.card-top, .card-bottom, .card-flip-top, .card-flip-bottom {
+  position: absolute; left: 0; width: 100%; height: 50%;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+  transition: background-color var(--transition-speed);
+}
+
+.card-top, .card-flip-top {
+  top: 0; align-items: flex-end;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  background: linear-gradient(to bottom, #253f78, #1c2f5e);
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,0.35);
+}
+
+.card-bottom, .card-flip-bottom {
+  bottom: 0; align-items: flex-start;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  background: linear-gradient(to bottom, #152448, #0d1a35);
+  box-shadow: inset 0 4px 8px rgba(0,0,0,0.5);
+}
+
+.card-top span, .card-bottom span, .card-flip-top span, .card-flip-bottom span {
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-size: var(--font-size); font-weight: 700;
+  color: var(--text-color); line-height: 1; display: block;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: color var(--transition-speed);
+}
+
+.card-top span, .card-flip-top span   { transform: translateY(50%); }
+.card-bottom span, .card-flip-bottom span { transform: translateY(-50%); }
+
+.card-flip-top {
+  z-index: 3; transform-origin: bottom center;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.card-flip-bottom {
+  z-index: 2; transform-origin: top center; transform: rotateX(180deg);
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.card-top { z-index: 1; } .card-bottom { z-index: 1; }
+
+.card.flipping .card-flip-top {
+  animation: flipTop calc(var(--transition-speed)/2) ease-in forwards;
+}
+.card.flipping .card-flip-bottom {
+  animation: flipBottom calc(var(--transition-speed)/2) ease-out forwards;
+  animation-delay: calc(var(--transition-speed)/2);
+}
+
+@keyframes flipTop {
+  0%   { transform: rotateX(0deg);   box-shadow: inset 0 -4px 8px rgba(0,0,0,0.35); }
+  80%  { transform: rotateX(-80deg); box-shadow: inset 0 -4px 28px rgba(0,0,0,0.9); }
+  100% { transform: rotateX(-90deg); box-shadow: inset 0 -4px 28px rgba(0,0,0,0.9); }
+}
+@keyframes flipBottom {
+  0%   { transform: rotateX(90deg);  box-shadow: inset 0 4px 28px rgba(0,0,0,0.9); }
+  20%  { transform: rotateX(10deg);  box-shadow: inset 0 4px 12px rgba(0,0,0,0.6); }
+  100% { transform: rotateX(0deg);   box-shadow: inset 0 4px 8px rgba(0,0,0,0.5); }
+}
+
+/* ===== Target Container ===== */
+#target-container {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; transition: opacity 0.3s;
+}
+#target-container.locked { opacity: 0.45; pointer-events: none; }
+
+.target-header { display: flex; align-items: center; gap: 8px; }
+
+.target-label { font-size: 11px; font-weight: 600; opacity: 0.4; letter-spacing: 0.12em; text-transform: uppercase; }
+
+.target-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--highlight); background: rgba(233,69,96,0.15);
+  border: 1px solid rgba(233,69,96,0.4); border-radius: 4px; padding: 2px 7px;
+}
+.target-badge.hidden { display: none; }
+
+.target-inputs { display: flex; align-items: center; gap: 6px; font-size: 20px; }
+.target-sep { color: var(--colon-color); font-weight: 700; }
+
+.target-inputs input {
+  width: 58px; background: #1c2035; border: 1px solid #2a3a5e;
+  border-radius: 6px; color: var(--text-color); font-size: 20px;
+  text-align: center; padding: 6px 4px; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s; -moz-appearance: textfield;
+}
+.target-inputs input:focus { border-color: var(--highlight); box-shadow: 0 0 0 3px rgba(233,69,96,0.2); }
+.target-inputs input::-webkit-outer-spin-button,
+.target-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+/* ===== Preset Buttons ===== */
+.preset-buttons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+.btn-preset {
+  padding: 5px 12px; font-size: 12px; font-weight: 600;
+  background: #1c2035; color: var(--colon-color);
+  border: 1px solid #2a3a5e; border-radius: 20px;
+  cursor: pointer; letter-spacing: 0.04em;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-preset:hover:not(:disabled) { background: #253050; color: var(--text-color); border-color: var(--colon-color); }
+.btn-preset:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ===== Controls ===== */
+#controls { display: flex; gap: 12px; align-items: center; }
+
+.btn {
+  padding: 12px 30px; font-size: 15px; font-weight: 700;
+  border: none; border-radius: 8px; cursor: pointer; letter-spacing: 0.06em;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.btn:hover:not(:disabled) { opacity: 0.88; }
+.btn:active:not(:disabled) { transform: scale(0.95); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-primary  { background: var(--highlight); color: #fff; box-shadow: 0 4px 16px rgba(233,69,96,0.4); }
+.btn-secondary { background: #1c2f5e; color: var(--text-color); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.btn-danger   { background: #252535; color: var(--text-color); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.btn-icon {
+  padding: 12px 16px; font-size: 18px; background: transparent;
+  color: var(--colon-color); border: 1px solid #2a3a5e; border-radius: 8px;
+}
+.btn-icon:hover:not(:disabled) { background: #1c2035; opacity: 1; }
+
+/* ===== Paused ===== */
+#clock-container.paused { opacity: 0.55; transition: opacity 0.3s; }
+
+#paused-label {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.14em;
+  color: var(--colon-color); text-transform: uppercase;
+  animation: blink 1.2s ease-in-out infinite;
+}
+#paused-label.hidden { display: none; }
+
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+/* ===== Shortcuts ===== */
+#shortcuts { display: flex; gap: 20px; opacity: 0.28; font-size: 11px; letter-spacing: 0.06em; }
+#shortcuts span { display: flex; align-items: center; gap: 5px; }
+kbd {
+  background: #1c2035; border: 1px solid #2a3a5e; border-radius: 4px;
+  padding: 2px 6px; font-family: inherit; font-size: 10px; color: var(--text-color);
+}
+
+/* ===== Overtime Banner ===== */
+#overtime-banner {
+  font-size: 17px; font-weight: 700; color: var(--overtime-text);
+  letter-spacing: 0.08em; animation: pulse 0.9s ease-in-out infinite;
+}
+#overtime-banner.hidden { display: none; }
+
+@keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.97); } }
+
+/* ===== Overtime State ===== */
+body.overtime { background-color: var(--overtime-bg); }
+body.overtime .card-top, body.overtime .card-flip-top { background: linear-gradient(to bottom, #6e1818, #5a1010); }
+body.overtime .card-bottom, body.overtime .card-flip-bottom { background: linear-gradient(to bottom, #420b0b, #2e0707); }
+body.overtime .card-top span, body.overtime .card-bottom span,
+body.overtime .card-flip-top span, body.overtime .card-flip-bottom span { color: var(--overtime-text); }
+body.overtime .colon { color: var(--overtime-colon); text-shadow: 0 0 12px rgba(122,32,32,0.5); }
+body.overtime .unit-label { color: var(--overtime-text); }
+
+/* ===== Brand ===== */
+#brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-color); opacity: 0.2;
+  transition: opacity 0.2s;
+}
+#brand:hover { opacity: 0.5; }
+#btn-download {
+  color: var(--text-color); text-decoration: none; font-size: 14px; line-height: 1;
+  border: 1px solid currentColor; border-radius: 4px; padding: 2px 6px;
+  transition: background 0.15s;
+}
+#btn-download:hover { background: rgba(255,255,255,0.1); }
+
+/* ===== Fullscreen ===== */
+:fullscreen {
+  --card-w: min(14vw, 160px); --card-h: min(17vw, 192px);
+  --font-size: min(12vw, 140px); --card-radius: 12px;
+}
+:fullscreen body { min-height: 100dvh; justify-content: center; }
+:fullscreen #app { gap: 48px; justify-content: center; min-height: 100dvh; }
+:fullscreen #clock-container { gap: min(3vw, 36px); }
+:fullscreen .digits { gap: min(1vw, 12px); }
+:fullscreen .colon { font-size: min(10vw, 110px); margin-bottom: min(3vw, 34px); }
+:fullscreen .unit-label { font-size: 16px; opacity: 0.5; }
+:fullscreen #target-container { display: none; }
+:fullscreen #controls { gap: 16px; }
+:fullscreen .btn { padding: 14px 36px; font-size: 16px; }
+:fullscreen .btn-icon { padding: 14px 18px; font-size: 20px; }
+:fullscreen #overtime-banner { font-size: 28px; letter-spacing: 0.1em; }
+:fullscreen #shortcuts { display: none; }
+:fullscreen #brand { font-size: 14px; opacity: 0.25; }
+
+/* ===== Responsive ===== */
+@media (max-width: 780px) {
+  :root { --card-w:80px; --card-h:96px; --font-size:68px; --card-radius:8px; }
+  .colon { font-size:52px; margin-bottom:22px; }
+  #clock-container { gap:16px; }
+}
+@media (max-width: 600px) {
+  :root { --card-w:58px; --card-h:70px; --font-size:50px; --card-radius:6px; }
+  .colon { font-size:36px; margin-bottom:18px; }
+  #clock-container { gap:8px; }
+  .btn { padding:10px 18px; font-size:13px; }
+  .digits { gap:4px; }
+}
+@media (max-width: 420px) {
+  :root { --card-w:44px; --card-h:54px; --font-size:38px; }
+  .colon { font-size:28px; margin-bottom:14px; }
+  #clock-container { gap:6px; }
+}
+  </style>
+</head>
+<body>
+
+  <div id="app">
+
+    <div id="clock-container">
+
+      <div class="unit-group" id="group-hours">
+        <div class="digits">
+          <div class="flip-unit"><div class="card" id="card-h1">
+            <div class="card-top"><span>0</span></div>
+            <div class="card-bottom"><span>0</span></div>
+            <div class="card-flip-top"><span>0</span></div>
+            <div class="card-flip-bottom"><span>0</span></div>
+          </div></div>
+          <div class="flip-unit"><div class="card" id="card-h2">
+            <div class="card-top"><span>0</span></div>
+            <div class="card-bottom"><span>0</span></div>
+            <div class="card-flip-top"><span>0</span></div>
+            <div class="card-flip-bottom"><span>0</span></div>
+          </div></div>
+        </div>
+        <label class="unit-label">시</label>
+      </div>
+
+      <div class="colon">:</div>
+
+      <div class="unit-group" id="group-minutes">
+        <div class="digits">
+          <div class="flip-unit"><div class="card" id="card-m1">
+            <div class="card-top"><span>0</span></div>
+            <div class="card-bottom"><span>0</span></div>
+            <div class="card-flip-top"><span>0</span></div>
+            <div class="card-flip-bottom"><span>0</span></div>
+          </div></div>
+          <div class="flip-unit"><div class="card" id="card-m2">
+            <div class="card-top"><span>0</span></div>
+            <div class="card-bottom"><span>0</span></div>
+            <div class="card-flip-top"><span>0</span></div>
+            <div class="card-flip-bottom"><span>0</span></div>
+          </div></div>
+        </div>
+        <label class="unit-label">분</label>
+      </div>
+
+      <div class="colon">:</div>
+
+      <div class="unit-group" id="group-seconds">
+        <div class="digits">
+          <div class="flip-unit"><div class="card" id="card-s1">
+            <div class="card-top"><span>0</span></div>
+            <div class="card-bottom"><span>0</span></div>
+            <div class="card-flip-top"><span>0</span></div>
+            <div class="card-flip-bottom"><span>0</span></div>
+          </div></div>
+          <div class="flip-unit"><div class="card" id="card-s2">
+            <div class="card-top"><span>0</span></div>
+            <div class="card-bottom"><span>0</span></div>
+            <div class="card-flip-top"><span>0</span></div>
+            <div class="card-flip-bottom"><span>0</span></div>
+          </div></div>
+        </div>
+        <label class="unit-label">초</label>
+      </div>
+
+    </div>
+
+    <div id="target-container">
+      <div class="target-header">
+        <span class="target-label">타이머 설정</span>
+        <span id="target-badge" class="target-badge hidden">설정됨</span>
+      </div>
+      <div class="target-inputs">
+        <input type="number" id="target-hours"   min="0" max="99" value="0" />
+        <span class="target-sep">:</span>
+        <input type="number" id="target-minutes" min="0" max="59" value="0" />
+        <span class="target-sep">:</span>
+        <input type="number" id="target-seconds" min="0" max="59" value="0" />
+      </div>
+      <div class="preset-buttons">
+        <button class="btn-preset" data-minutes="10">10분</button>
+        <button class="btn-preset" data-minutes="20">20분</button>
+        <button class="btn-preset" data-minutes="30">30분</button>
+        <button class="btn-preset" data-minutes="40">40분</button>
+        <button class="btn-preset" data-minutes="50">50분</button>
+        <button class="btn-preset" data-minutes="60">60분</button>
+      </div>
+    </div>
+
+    <div id="controls">
+      <button id="btn-start"  class="btn btn-primary">시작</button>
+      <button id="btn-pause"  class="btn btn-secondary" disabled>일시정지</button>
+      <button id="btn-reset"  class="btn btn-danger">초기화</button>
+      <button id="btn-full"   class="btn btn-icon" title="전체화면 (F)">⛶</button>
+    </div>
+
+    <div id="overtime-banner" class="hidden">⏰ 시간 종료!</div>
+    <div id="paused-label"    class="hidden">⏸ 일시정지</div>
+
+    <div id="shortcuts">
+      <span><kbd>Space</kbd> 시작 / 정지</span>
+      <span><kbd>R</kbd> 초기화</span>
+      <span><kbd>F</kbd> 전체화면</span>
+    </div>
+
+    <div id="brand">
+      AhnLab CPR Timer
+      <a id="btn-download" href="" download="AhnLab-CPR-Timer.html" title="다운로드">⬇</a>
+    </div>
+
+  </div>
+
+  <script>
+  /* ── FlipCard ──────────────────────────────────────────── */
+  class FlipCard {
+    constructor(el) {
+      this.el          = el;
+      this.top         = el.querySelector('.card-top span');
+      this.bottom      = el.querySelector('.card-bottom span');
+      this.flipTop     = el.querySelector('.card-flip-top span');
+      this.flipBottom  = el.querySelector('.card-flip-bottom span');
+      this._current    = 0;
+      this._animating  = false;
+      this._queued     = null;
+    }
+
+    _speed() {
+      const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue('--transition-speed').trim();
+      return parseFloat(raw) * 1000 || 500;
+    }
+
+    set(digit) {
+      this._current = digit;
+      const d = String(digit);
+      this.top.textContent = this.bottom.textContent =
+      this.flipTop.textContent = this.flipBottom.textContent = d;
+      this.el.classList.remove('flipping');
+      this._animating = false;
+      this._queued    = null;
+    }
+
+    flip(next) {
+      if (this._animating) { this._queued = next; return; }
+      this._runFlip(next);
+    }
+
+    _runFlip(next) {
+      const current = this._current;
+      if (current === next) return;
+      this._current   = next;
+      this._animating = true;
+      const curr = String(current), nxt = String(next);
+      const half = this._speed() / 2;
+
+      this.top.textContent        = curr;
+      this.bottom.textContent     = nxt;
+      this.flipTop.textContent    = curr;
+      this.flipBottom.textContent = nxt;
+      this.el.classList.add('flipping');
+
+      setTimeout(() => {
+        this.top.textContent = this.flipTop.textContent = nxt;
+      }, half);
+
+      setTimeout(() => {
+        this.el.classList.remove('flipping');
+        this._animating = false;
+        if (this._queued !== null) {
+          const q = this._queued; this._queued = null; this._runFlip(q);
+        }
+      }, half * 2);
+    }
+  }
+
+  /* ── Timer ─────────────────────────────────────────────── */
+  class Timer {
+    constructor(onTick) {
+      this._onTick = onTick; this._elapsed = 0;
+      this._startAt = null; this._interval = null; this.running = false;
+    }
+    start() {
+      if (this.running) return;
+      this.running  = true;
+      this._startAt = Date.now() - this._elapsed * 1000;
+      this._interval = setInterval(() => {
+        this._elapsed = Math.floor((Date.now() - this._startAt) / 1000);
+        this._onTick(this._elapsed);
+      }, 1000);
+    }
+    pause() {
+      if (!this.running) return;
+      this.running = false;
+      clearInterval(this._interval); this._interval = null;
+    }
+    reset() {
+      this.pause(); this._elapsed = 0; this._startAt = null;
+    }
+  }
+
+  /* ── App ───────────────────────────────────────────────── */
+  const btnStart = document.getElementById('btn-start');
+  const btnPause = document.getElementById('btn-pause');
+  const btnReset = document.getElementById('btn-reset');
+  const btnFull  = document.getElementById('btn-full');
+  const banner   = document.getElementById('overtime-banner');
+  const badge    = document.getElementById('target-badge');
+  const clockEl  = document.getElementById('clock-container');
+  const inH      = document.getElementById('target-hours');
+  const inM      = document.getElementById('target-minutes');
+  const inS      = document.getElementById('target-seconds');
+
+  const cards = {
+    h1: new FlipCard(document.getElementById('card-h1')),
+    h2: new FlipCard(document.getElementById('card-h2')),
+    m1: new FlipCard(document.getElementById('card-m1')),
+    m2: new FlipCard(document.getElementById('card-m2')),
+    s1: new FlipCard(document.getElementById('card-s1')),
+    s2: new FlipCard(document.getElementById('card-s2')),
+  };
+
+  const timer = new Timer(onTick);
+  let prevDigits    = { h1:0,h2:0,m1:0,m2:0,s1:0,s2:0 };
+  let isOvertime    = false;
+  let targetSeconds = 0;
+  let wakeLock      = null;
+
+  function beep() {
+    try {
+      const ctx = new AudioContext(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.8);
+    } catch(_) {}
+  }
+
+  async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(_) {}
+  }
+  async function releaseWakeLock() {
+    try { await wakeLock?.release(); } catch(_) {}
+    wakeLock = null;
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && timer.running) acquireWakeLock();
+  });
+
+  function updateTitle(sec) {
+    const hh = String(Math.floor(sec/3600)).padStart(2,'0');
+    const mm = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    const ss = String(sec%60).padStart(2,'0');
+    document.title = (isOvertime ? '🔴 +' : '⏱ ') + hh+':'+mm+':'+ss+' | Flip Timer';
+  }
+
+  function onTick(elapsed) {
+    let displaySec;
+    if (elapsed <= targetSeconds) {
+      displaySec = targetSeconds - elapsed;
+      if (elapsed === targetSeconds && !isOvertime) { setOvertime(true); beep(); }
+    } else {
+      if (!isOvertime) { setOvertime(true); beep(); }
+      displaySec = elapsed - targetSeconds;
+    }
+    updateTitle(displaySec);
+    const hh = Math.floor(displaySec/3600);
+    const mm = Math.floor((displaySec%3600)/60);
+    const ss = displaySec%60;
+    const digits = {
+      h1:Math.floor(hh/10), h2:hh%10,
+      m1:Math.floor(mm/10), m2:mm%10,
+      s1:Math.floor(ss/10), s2:ss%10,
+    };
+    for (const k in digits) if (digits[k] !== prevDigits[k]) cards[k].flip(digits[k]);
+    prevDigits = {...digits};
+  }
+
+  function setClockTo(seconds) {
+    const hh = Math.floor(seconds/3600);
+    const mm = Math.floor((seconds%3600)/60);
+    const ss = seconds%60;
+    const d = { h1:Math.floor(hh/10),h2:hh%10, m1:Math.floor(mm/10),m2:mm%10, s1:Math.floor(ss/10),s2:ss%10 };
+    for (const k in d) cards[k].set(d[k]);
+    prevDigits = {...d};
+  }
+
+  function getTargetSeconds() {
+    return (parseInt(inH.value,10)||0)*3600 + (parseInt(inM.value,10)||0)*60 + (parseInt(inS.value,10)||0);
+  }
+
+  function clampInput(input, min, max) {
+    let v = parseInt(input.value,10);
+    if (isNaN(v)||v<min) v=min; if(v>max) v=max; input.value=v; onTargetChange();
+  }
+
+  function onTargetChange() {
+    const t = getTargetSeconds();
+    badge.classList.toggle('hidden', t===0);
+    btnStart.disabled = t===0;
+    if (!timer.running) setClockTo(t);
+  }
+
+  inH.addEventListener('blur',  () => clampInput(inH,0,99));
+  inM.addEventListener('blur',  () => clampInput(inM,0,59));
+  inS.addEventListener('blur',  () => clampInput(inS,0,59));
+  [inH,inM,inS].forEach(el => el.addEventListener('input', onTargetChange));
+
+  document.getElementById('target-container').addEventListener('click', e => {
+    const btn = e.target.closest('.btn-preset');
+    if (!btn || btn.disabled) return;
+    const totalMin = parseInt(btn.dataset.minutes,10);
+    inH.value = Math.floor(totalMin/60);
+    inM.value = totalMin%60;
+    inS.value = 0;
+    onTargetChange();
+  });
+
+  function setInputsLocked(locked) {
+    [inH,inM,inS].forEach(el => { el.disabled = locked; });
+    document.querySelectorAll('.btn-preset').forEach(el => { el.disabled = locked; });
+    document.getElementById('target-container').classList.toggle('locked', locked);
+  }
+
+  function setOvertime(state) {
+    isOvertime = state;
+    document.body.classList.toggle('overtime', state);
+    banner.classList.toggle('hidden', !state);
+  }
+
+  function setPaused(paused) {
+    clockEl.classList.toggle('paused', paused);
+    document.getElementById('paused-label').classList.toggle('hidden', !paused);
+  }
+
+  btnStart.disabled = true;
+
+  btnStart.addEventListener('click', () => {
+    const t = getTargetSeconds(); if(t===0) return;
+    targetSeconds = t; setClockTo(t); setInputsLocked(true);
+    acquireWakeLock(); timer.start();
+    btnStart.disabled=true; btnPause.disabled=false;
+  });
+
+  btnPause.addEventListener('click', () => {
+    if (timer.running) {
+      timer.pause(); btnPause.textContent='재개'; setPaused(true); releaseWakeLock();
+    } else {
+      timer.start(); btnPause.textContent='일시정지'; setPaused(false); acquireWakeLock();
+    }
+  });
+
+  btnReset.addEventListener('click', () => {
+    timer.reset();
+    btnStart.disabled    = getTargetSeconds()===0;
+    btnPause.disabled    = true;
+    btnPause.textContent = '일시정지';
+    setOvertime(false); setInputsLocked(false); setPaused(false);
+    releaseWakeLock(); setClockTo(getTargetSeconds());
+    document.title = 'Flip Timer';
+  });
+
+  btnFull.addEventListener('click', toggleFullscreen);
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName==='INPUT') return;
+    if (e.code==='Space') {
+      e.preventDefault();
+      if (!timer.running && !btnStart.disabled) btnStart.click();
+      else if (!btnPause.disabled) btnPause.click();
+    }
+    if (e.key==='f'||e.key==='F') toggleFullscreen();
+    if (e.key==='r'||e.key==='R') btnReset.click();
+  });
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+    else document.exitFullscreen().catch(()=>{});
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    const isFs = !!document.fullscreenElement;
+    btnFull.textContent = isFs ? '✕' : '⛶';
+    btnFull.title       = isFs ? '전체화면 종료 (F)' : '전체화면 (F)';
+  });
+
+  setClockTo(0);
+  </script>
+</body>
+</html>

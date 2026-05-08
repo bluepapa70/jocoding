@@ -1,0 +1,14 @@
+{
+    "python.pythonPath": "C:\\Program Files\\Python313\\python.exe",
+    "python.defaultInterpreterPath": "C:\\Program Files\\Python313\\python.exe",
+    "python.terminal.activateEnvironment": false,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.mypyEnabled": true,
+    "python.formatting.provider": "black",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}"
+    ]
+}
