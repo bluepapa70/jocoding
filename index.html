@@ -70,16 +70,6 @@
   <!-- Board -->
   <div class="board" id="board"></div>
 
-  <!-- Buttons -->
-  <div class="btn-group">
-    <button class="btn-generate-img" onclick="generate()" title="번호 추천받기">
-      <img src="btn-generate.png" alt="번호 추천받기">
-      <span>✨ 번호 추천받기</span>
-    </button>
-    <button class="btn btn-secondary" onclick="clearBoard()">↺ 초기화</button>
-    <button class="btn btn-save" id="btnSave" onclick="saveAsImage()" disabled>📷 저장</button>
-  </div>
-
   <!-- Lotto Ticket -->
   <section class="ticket-section" id="ticketSection">
     <div class="ticket-section-header">
@@ -97,6 +87,16 @@
       </div>
     </div>
   </section>
+
+  <!-- Buttons -->
+  <div class="btn-group">
+    <button class="btn-generate-img" onclick="generate()" title="번호 추천받기">
+      <img src="btn-generate.png" alt="번호 추천받기">
+      <span>✨ 번호 추천받기</span>
+    </button>
+    <button class="btn btn-secondary" onclick="clearBoard()">↺ 초기화</button>
+    <button class="btn btn-save" id="btnSave" onclick="saveAsImage()" disabled>📷 저장</button>
+  </div>
 
   <!-- Stats Panel -->
   <div class="stats-panel">
