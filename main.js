@@ -238,18 +238,32 @@ function toggleTheme() {
 
 /* ── 로또 기입 용지 ── */
 function renderTicket(gameNums) {
-  const body = document.getElementById('ticketBody');
-  const sets = gameNums.map(nums => new Set(nums));
-  let html = '';
-  for (let n = 1; n <= 45; n++) {
-    const c = ballColor(n);
-    const circles = sets.map(s =>
-      `<div class="tk-circle${s.has(n) ? ' tk-' + c : ''}"></div>`
-    ).join('');
-    html += `<div class="tk-row"><span class="tk-num">${n}</span>${circles}</div>`;
-    if (n % 5 === 0 && n < 45) html += '<div class="tk-sep"></div>';
-  }
-  body.innerHTML = html;
+  const container = document.getElementById('ticketGames');
+  const LABELS = ['A', 'B', 'C', 'D', 'E'];
+
+  container.innerHTML = gameNums.map((nums, g) => {
+    const sel = new Set(nums);
+    let cells = '';
+    for (let n = 1; n <= 49; n++) {
+      if (n <= 45) {
+        const c = ballColor(n);
+        const picked = sel.has(n);
+        cells += `<div class="tg-cell${picked ? ' tg-' + c : ''}">${n}</div>`;
+      } else {
+        cells += '<div class="tg-cell tg-empty"></div>';
+      }
+    }
+    return `
+      <div class="ticket-game">
+        <div class="tg-header">
+          <span class="tg-label">${LABELS[g]}</span>
+          <span class="tg-price">1,000원</span>
+        </div>
+        <div class="tg-grid">${cells}</div>
+        <div class="tg-footer">자동 및 번호선택</div>
+      </div>`;
+  }).join('');
+
   document.getElementById('ticketSection').classList.add('visible');
 }
 
