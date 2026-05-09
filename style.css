@@ -120,6 +120,14 @@ h1 {
   white-space: nowrap;
 }
 
+.title-img {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
 h1 .blue { color: var(--accent2); }
 h1 .gold { color: var(--accent); }
 
