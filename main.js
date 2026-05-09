@@ -131,7 +131,7 @@ function generate() {
         </div>`;
     }).join('');
 
-    row.innerHTML = `<span class="game-label">#${g + 1}</span><div class="balls">${ballsHTML}</div>`;
+    row.innerHTML = `<span class="game-label">${'ABCDE'[g]}</span><div class="balls">${ballsHTML}</div>`;
     board.appendChild(row);
 
     /* 볼 순차 등장 */
@@ -168,7 +168,7 @@ function clearBoard() {
     const row = document.createElement('div');
     row.className = 'game-row';
     row.innerHTML = `
-      <span class="game-label">#${g + 1}</span>
+      <span class="game-label">${'ABCDE'[g]}</span>
       <div class="balls">${Array(6).fill('<div class="ball-placeholder"></div>').join('')}</div>`;
     board.appendChild(row);
   }
