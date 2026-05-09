@@ -147,6 +147,21 @@ h1 .gold { color: var(--accent); }
   background: var(--green);
 }
 
+.draw-info {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.draw-divider {
+  opacity: 0.4;
+}
+
 /* ───────────── MODE TOGGLE ───────────── */
 .mode-wrap {
   display: flex;

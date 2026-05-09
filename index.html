@@ -22,6 +22,7 @@
     <div class="data-badge">
       lottolyzer.com · 2002.12 ~ 2026.05 전체 회차 기준
     </div>
+    <div class="draw-info" id="drawInfo"></div>
   </header>
 
   <!-- Mode Toggle -->
@@ -83,5 +84,25 @@
   </p>
 
   <script src="main.js"></script>
+  <script>
+    (function () {
+      const now = new Date();
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const fmt = d => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+
+      const todayStr = fmt(now);
+
+      const draw = new Date(now);
+      const dow = draw.getDay(); // 0=일 6=토
+      const daysUntilSat = (6 - dow + 7) % 7 || 7;
+      // 오늘이 토요일이고 20:35 이전이면 오늘이 추첨일
+      const isTodaySat = dow === 6 && (now.getHours() < 20 || (now.getHours() === 20 && now.getMinutes() < 35));
+      if (!isTodaySat) draw.setDate(draw.getDate() + daysUntilSat);
+      const drawStr = `${fmt(draw)} 오후 8:35`;
+
+      document.getElementById('drawInfo').innerHTML =
+        `<span>📅 오늘: ${todayStr}</span><span class="draw-divider">|</span><span>🎯 이번 주 추첨: ${drawStr}</span>`;
+    })();
+  </script>
 </body>
 </html>
