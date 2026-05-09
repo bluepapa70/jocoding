@@ -148,6 +148,7 @@ function generate() {
   }
 
   updateStatsHighlight();
+  setTimeout(() => { document.getElementById('btnSave').disabled = false; }, GAMES * 90 + 6 * 65 + 100);
 }
 
 /* ── 초기화 ── */
@@ -163,6 +164,7 @@ function clearBoard() {
       <div class="balls">${Array(6).fill('<div class="ball-placeholder"></div>').join('')}</div>`;
     board.appendChild(row);
   }
+  document.getElementById('btnSave').disabled = true;
   updateStatsHighlight();
 }
 
@@ -221,6 +223,167 @@ function toggleTheme() {
   const isDark = document.body.classList.toggle('dark-mode');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
   document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+}
+
+/* ── 이미지 저장 ── */
+function ballGradientColors(n) {
+  if (n <= 10) return ['#ffe566', '#f9a800'];
+  if (n <= 20) return ['#90caf9', '#1565c0'];
+  if (n <= 30) return ['#ef9a9a', '#c62828'];
+  if (n <= 40) return ['#cfd8dc', '#546e7a'];
+  return ['#dce775', '#558b2f'];
+}
+
+function drawLottoCanvas(gameNums) {
+  const isDark = document.body.classList.contains('dark-mode');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = 600;
+  const ROW_H = 88;
+  const HEADER_H = 96;
+  const FOOTER_H = 44;
+  const H = HEADER_H + gameNums.length * ROW_H + FOOTER_H;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // Background
+  ctx.fillStyle = isDark ? '#0d1117' : '#f6f8fa';
+  ctx.fillRect(0, 0, W, H);
+
+  // Header bg strip
+  ctx.fillStyle = isDark ? '#161b22' : '#ffffff';
+  ctx.fillRect(0, 0, W, HEADER_H);
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = isDark ? '#e6edf3' : '#1f2328';
+  ctx.font = 'bold 20px system-ui,-apple-system,sans-serif';
+  ctx.fillText('Bluepapa AI Lotto 번호 생성기', W / 2, 36);
+
+  // Subtitle
+  const today = new Date();
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  ctx.fillStyle = isDark ? '#8b949e' : '#636c76';
+  ctx.font = '12px system-ui,-apple-system,sans-serif';
+  ctx.fillText(`${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일 (${days[today.getDay()]}) 생성`, W / 2, 58);
+
+  // Separator
+  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(24, HEADER_H - 1);
+  ctx.lineTo(W - 24, HEADER_H - 1);
+  ctx.stroke();
+
+  // Rows
+  const LABEL_W = 40;
+  const PAD_X = 28;
+  const BALL_R = 23;
+  const availW = W - PAD_X * 2 - LABEL_W;
+  const spacing = availW / 6;
+  const firstCX = PAD_X + LABEL_W + spacing / 2;
+
+  gameNums.forEach((nums, g) => {
+    const rowY = HEADER_H + g * ROW_H;
+    const cy = rowY + ROW_H / 2;
+
+    // Row bg (alternating)
+    ctx.fillStyle = isDark
+      ? (g % 2 === 0 ? '#161b22' : '#1c2230')
+      : (g % 2 === 0 ? '#ffffff' : '#f6f8fa');
+    ctx.fillRect(0, rowY, W, ROW_H);
+
+    // Label
+    ctx.fillStyle = isDark ? '#8b949e' : '#636c76';
+    ctx.font = 'bold 11px system-ui';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`#${g + 1}`, PAD_X, cy);
+
+    // Balls
+    nums.forEach((n, i) => {
+      const cx = firstCX + i * spacing;
+      const [c1, c2] = ballGradientColors(n);
+
+      // Ball fill
+      const grad = ctx.createRadialGradient(cx - BALL_R * 0.2, cy - BALL_R * 0.25, 0, cx, cy, BALL_R);
+      grad.addColorStop(0, c1);
+      grad.addColorStop(1, c2);
+      ctx.beginPath();
+      ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Shine
+      const shine = ctx.createRadialGradient(cx - BALL_R * 0.18, cy - BALL_R * 0.22, 0, cx - BALL_R * 0.1, cy - BALL_R * 0.15, BALL_R * 0.5);
+      shine.addColorStop(0, 'rgba(255,255,255,0.3)');
+      shine.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
+      ctx.fillStyle = shine;
+      ctx.fill();
+
+      // Number
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${n >= 10 ? 14 : 15}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(n, cx, cy + 0.5);
+      ctx.shadowBlur = 0;
+    });
+  });
+
+  // Footer
+  ctx.fillStyle = isDark ? '#8b949e' : '#636c76';
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('재미용 서비스 · 당첨 보장 없음 · jocoding-ckj.pages.dev', W / 2, HEADER_H + gameNums.length * ROW_H + FOOTER_H / 2);
+
+  return canvas;
+}
+
+async function saveAsImage() {
+  if (lastPicked.length === 0) return;
+
+  const gameNums = [];
+  document.querySelectorAll('#board .game-row').forEach(row => {
+    const nums = [...row.querySelectorAll('.ball')].map(b => parseInt(b.textContent));
+    if (nums.length === 6) gameNums.push(nums);
+  });
+  if (gameNums.length === 0) return;
+
+  const canvas = drawLottoCanvas(gameNums);
+  canvas.toBlob(async (blob) => {
+    const fileName = `lotto-${new Date().toISOString().slice(0, 10)}.png`;
+    const file = new File([blob], fileName, { type: 'image/png' });
+    try {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'AI 로또 번호' });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }
+  }, 'image/png');
 }
 
 /* ── 초기 렌더 ── */
