@@ -578,7 +578,7 @@ async function saveAsImage() {
     try {
       const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: '통계왕 AI Lotto 번호' });
+        await navigator.share({ files: [file], title: '통계왕 AI Lotto 번호로 운수대통!' });
       }
     } catch (e) {
       // AbortError(사용자 취소)는 무시
