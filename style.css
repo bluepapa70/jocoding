@@ -320,7 +320,7 @@ h1 .gold { color: var(--accent); }
 .game-row:hover { border-color: rgba(251,196,0,0.2); }
 
 .game-label {
-  font-family: 'Black Han Sans', sans-serif;
+  font-family: 'Noto Sans KR', sans-serif;
   font-size: 28px;
   font-weight: 400;
   color: #cc1f2b;
