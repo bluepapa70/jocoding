@@ -279,23 +279,23 @@ function ballGradientColors(n) {
 function drawLottoCanvas(gameNums) {
   const isDark = document.body.classList.contains('dark-mode');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const W = 600;
-  const ROW_H = 88;
-  const HEADER_H = 96;
+  const W = 800;
+  const ROW_H = 108;
+  const HEADER_H = 100;
   const FOOTER_H = 44;
 
   // 티켓 상수
-  const BRAND_W = 30;
-  const CELL = 14, CELL_GAP = 1;
-  const GRID_W = 7 * CELL + 6 * CELL_GAP;  // 104
+  const BRAND_W = 36;
+  const CELL = 18, CELL_GAP = 2;
+  const GRID_W = 7 * CELL + 6 * CELL_GAP;  // 138
   const GRID_H = GRID_W;
-  const GH_H = 22, GF_H = 13, GP_Y = 4;
-  const GAME_H = GH_H + GP_Y + GRID_H + GP_Y + GF_H;  // 147
-  const GAME_W = (W - BRAND_W) / 5;  // 114
-  const TICKET_LABEL_H = 28;
+  const GH_H = 28, GF_H = 16, GP_Y = 5;
+  const GAME_H = GH_H + GP_Y + GRID_H + GP_Y + GF_H;  // 197
+  const GAME_W = (W - BRAND_W) / 5;  // 152.8
+  const TICKET_LABEL_H = 32;
   const TICKET_H = TICKET_LABEL_H + GAME_H;
 
-  const H = HEADER_H + gameNums.length * ROW_H + 12 + TICKET_H + FOOTER_H;
+  const H = HEADER_H + gameNums.length * ROW_H + 16 + TICKET_H + FOOTER_H;
 
   const canvas = document.createElement('canvas');
   canvas.width = W * dpr;
@@ -333,9 +333,9 @@ function drawLottoCanvas(gameNums) {
   ctx.stroke();
 
   // Rows
-  const LABEL_W = 40;
-  const PAD_X = 28;
-  const BALL_R = 23;
+  const LABEL_W = 50;
+  const PAD_X = 32;
+  const BALL_R = 30;
   const availW = W - PAD_X * 2 - LABEL_W;
   const spacing = availW / 6;
   const firstCX = PAD_X + LABEL_W + spacing / 2;
@@ -352,7 +352,7 @@ function drawLottoCanvas(gameNums) {
 
     // Label
     ctx.fillStyle = '#cc1f2b';
-    ctx.font = 'bold 18px system-ui';
+    ctx.font = 'bold 26px system-ui';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText('ABCDE'[g], PAD_X, cy);
@@ -382,11 +382,11 @@ function drawLottoCanvas(gameNums) {
 
       // Number
       ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${n >= 10 ? 14 : 15}px system-ui`;
+      ctx.font = `bold ${n >= 10 ? 18 : 20}px system-ui`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.35)';
-      ctx.shadowBlur = 3;
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 4;
       ctx.fillText(n, cx, cy + 0.5);
       ctx.shadowBlur = 0;
     });
@@ -448,16 +448,16 @@ function drawLottoCanvas(gameNums) {
 
     // 게임 레이블
     ctx.fillStyle = '#cc1f2b';
-    ctx.font = 'bold 13px system-ui';
+    ctx.font = 'bold 16px system-ui';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(GAME_LABELS[g], gX + 5, tY + GH_H / 2);
+    ctx.fillText(GAME_LABELS[g], gX + 6, tY + GH_H / 2);
 
     // 가격
     ctx.fillStyle = '#666';
-    ctx.font = '7.5px system-ui';
+    ctx.font = '9px system-ui';
     ctx.textAlign = 'right';
-    ctx.fillText('1,000원', gX + GAME_W - 4, tY + GH_H / 2);
+    ctx.fillText('1,000원', gX + GAME_W - 5, tY + GH_H / 2);
 
     // 숫자 그리드
     const gridX = gX + (GAME_W - GRID_W) / 2;
@@ -480,7 +480,7 @@ function drawLottoCanvas(gameNums) {
         ctx.fillStyle = grad;
         ctx.fill();
         ctx.fillStyle = n <= 10 ? '#5a3800' : '#fff';
-        ctx.font = `bold ${n >= 10 ? 6.5 : 7}px system-ui`;
+        ctx.font = `bold ${n >= 10 ? 9 : 10}px system-ui`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(n, cx, cy + 0.5);
@@ -490,8 +490,8 @@ function drawLottoCanvas(gameNums) {
         ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 0.8;
         ctx.stroke();
-        ctx.fillStyle = '#aaa';
-        ctx.font = `6.5px system-ui`;
+        ctx.fillStyle = '#999';
+        ctx.font = `9px system-ui`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(n, cx, cy + 0.5);
@@ -500,7 +500,7 @@ function drawLottoCanvas(gameNums) {
 
     // 게임 푸터
     ctx.fillStyle = '#aaa';
-    ctx.font = '6.5px system-ui';
+    ctx.font = '9px system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('자동 및 번호선택', gX + GAME_W / 2, tY + GH_H + GP_Y + GRID_H + GP_Y + GF_H / 2);
