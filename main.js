@@ -303,7 +303,7 @@ function drawLottoCanvas(gameNums) {
   ctx.textAlign = 'center';
   ctx.fillStyle = isDark ? '#e6edf3' : '#1f2328';
   ctx.font = 'bold 20px system-ui,-apple-system,sans-serif';
-  ctx.fillText('Bluepapa AI Lotto 번호 생성기', W / 2, 36);
+  ctx.fillText('황금손 Lotto 번호 생성기', W / 2, 36);
 
   // Subtitle
   const today = new Date();
