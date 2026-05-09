@@ -508,6 +508,31 @@ h1 .gold { color: var(--accent); }
   cursor: not-allowed;
 }
 
+/* ───────────── TOAST ───────────── */
+#saveToast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  padding: 12px 22px;
+  border-radius: 999px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+#saveToast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 body.dark-mode .btn-secondary:hover {
     border-color: rgba(255,255,255,0.2);
 }

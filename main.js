@@ -401,6 +401,19 @@ function triggerDownload(blob, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function showToast(msg) {
+  let toast = document.getElementById('saveToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'saveToast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
 async function saveAsImage() {
   if (lastPicked.length === 0) return;
 
@@ -419,10 +432,23 @@ async function saveAsImage() {
     const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     const fileName = `lotto-${datePart}_${timePart}.png`;
 
-    // 다운로드 폴더에 항상 저장
+    // 1. 다운로드 폴더에 저장
     triggerDownload(blob, fileName);
 
-    // 모바일에서 추가로 공유 시트 제공
+    // 2. 클립보드에 복사 (카카오톡 등 붙여넣기용)
+    let clipboardOk = false;
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob })
+      ]);
+      clipboardOk = true;
+    } catch (e) {
+      // 클립보드 API 미지원 환경 무시
+    }
+
+    showToast(clipboardOk ? '📋 저장 완료! 카카오톡에 바로 붙여넣기 가능합니다.' : '💾 다운로드 폴더에 저장되었습니다.');
+
+    // 3. 모바일 공유 시트 (추가 옵션)
     try {
       const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
