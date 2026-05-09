@@ -283,7 +283,19 @@ function drawLottoCanvas(gameNums) {
   const ROW_H = 88;
   const HEADER_H = 96;
   const FOOTER_H = 44;
-  const H = HEADER_H + gameNums.length * ROW_H + FOOTER_H;
+
+  // 티켓 상수
+  const BRAND_W = 30;
+  const CELL = 14, CELL_GAP = 1;
+  const GRID_W = 7 * CELL + 6 * CELL_GAP;  // 104
+  const GRID_H = GRID_W;
+  const GH_H = 22, GF_H = 13, GP_Y = 4;
+  const GAME_H = GH_H + GP_Y + GRID_H + GP_Y + GF_H;  // 147
+  const GAME_W = (W - BRAND_W) / 5;  // 114
+  const TICKET_LABEL_H = 28;
+  const TICKET_H = TICKET_LABEL_H + GAME_H;
+
+  const H = HEADER_H + gameNums.length * ROW_H + 12 + TICKET_H + FOOTER_H;
 
   const canvas = document.createElement('canvas');
   canvas.width = W * dpr;
@@ -339,11 +351,11 @@ function drawLottoCanvas(gameNums) {
     ctx.fillRect(0, rowY, W, ROW_H);
 
     // Label
-    ctx.fillStyle = isDark ? '#8b949e' : '#636c76';
-    ctx.font = 'bold 11px system-ui';
+    ctx.fillStyle = '#cc1f2b';
+    ctx.font = 'bold 18px system-ui';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`#${g + 1}`, PAD_X, cy);
+    ctx.fillText('ABCDE'[g], PAD_X, cy);
 
     // Balls
     nums.forEach((n, i) => {
@@ -380,12 +392,126 @@ function drawLottoCanvas(gameNums) {
     });
   });
 
+  // ── 로또 기입 용지 ──
+  const tBase = HEADER_H + gameNums.length * ROW_H + 12;
+
+  // 섹션 라벨
+  ctx.fillStyle = isDark ? '#8b949e' : '#636c76';
+  ctx.font = 'bold 11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('📋  로또 기입 용지', W / 2, tBase + 13);
+
+  const tY = tBase + TICKET_LABEL_H;
+
+  // 티켓 배경
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, tY, W, GAME_H);
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, tY + 0.5, W - 1, GAME_H - 1);
+
+  // 브랜드 스트립
+  ctx.fillStyle = '#cc1f2b';
+  ctx.fillRect(0, tY, BRAND_W, GAME_H);
+  ctx.save();
+  ctx.translate(BRAND_W / 2, tY + GAME_H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'italic bold 10px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Lotto 6/45', 0, 0);
+  ctx.restore();
+
+  const GAME_LABELS = ['A', 'B', 'C', 'D', 'E'];
+  gameNums.forEach((nums, g) => {
+    const sel = new Set(nums);
+    const gX = BRAND_W + g * GAME_W;
+
+    // 게임 구분선
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(gX + 0.5, tY);
+    ctx.lineTo(gX + 0.5, tY + GAME_H);
+    ctx.stroke();
+
+    // 헤더 배경
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(gX, tY, GAME_W, GH_H);
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.beginPath();
+    ctx.moveTo(gX, tY + GH_H);
+    ctx.lineTo(gX + GAME_W, tY + GH_H);
+    ctx.stroke();
+
+    // 게임 레이블
+    ctx.fillStyle = '#cc1f2b';
+    ctx.font = 'bold 13px system-ui';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(GAME_LABELS[g], gX + 5, tY + GH_H / 2);
+
+    // 가격
+    ctx.fillStyle = '#666';
+    ctx.font = '7.5px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText('1,000원', gX + GAME_W - 4, tY + GH_H / 2);
+
+    // 숫자 그리드
+    const gridX = gX + (GAME_W - GRID_W) / 2;
+    const gridY = tY + GH_H + GP_Y;
+
+    for (let n = 1; n <= 45; n++) {
+      const row = Math.floor((n - 1) / 7);
+      const col = (n - 1) % 7;
+      const cx = gridX + col * (CELL + CELL_GAP) + CELL / 2;
+      const cy = gridY + row * (CELL + CELL_GAP) + CELL / 2;
+      const r = CELL / 2 - 0.5;
+
+      if (sel.has(n)) {
+        const [c1, c2] = ballGradientColors(n);
+        const grad = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.25, 0, cx, cy, r);
+        grad.addColorStop(0, c1);
+        grad.addColorStop(1, c2);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.fillStyle = n <= 10 ? '#5a3800' : '#fff';
+        ctx.font = `bold ${n >= 10 ? 6.5 : 7}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n, cx, cy + 0.5);
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.fillStyle = '#aaa';
+        ctx.font = `6.5px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n, cx, cy + 0.5);
+      }
+    }
+
+    // 게임 푸터
+    ctx.fillStyle = '#aaa';
+    ctx.font = '6.5px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('자동 및 번호선택', gX + GAME_W / 2, tY + GH_H + GP_Y + GRID_H + GP_Y + GF_H / 2);
+  });
+
   // Footer
   ctx.fillStyle = isDark ? '#8b949e' : '#636c76';
   ctx.font = '10px system-ui';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('재미용 서비스 · 당첨 보장 없음 · jocoding-ckj.pages.dev', W / 2, HEADER_H + gameNums.length * ROW_H + FOOTER_H / 2);
+  ctx.fillText('재미용 서비스 · 당첨 보장 없음 · jocoding-ckj.pages.dev', W / 2, tY + GAME_H + FOOTER_H / 2);
 
   return canvas;
 }
