@@ -413,7 +413,11 @@ async function saveAsImage() {
 
   const canvas = drawLottoCanvas(gameNums);
   canvas.toBlob(async (blob) => {
-    const fileName = `lotto-${new Date().toISOString().slice(0, 10)}.png`;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const datePart = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`;
+    const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const fileName = `lotto-${datePart}_${timePart}.png`;
 
     // 다운로드 폴더에 항상 저장
     triggerDownload(blob, fileName);
