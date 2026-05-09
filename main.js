@@ -148,7 +148,15 @@ function generate() {
   }
 
   updateStatsHighlight();
-  setTimeout(() => { document.getElementById('btnSave').disabled = false; }, GAMES * 90 + 6 * 65 + 100);
+  const delay = GAMES * 90 + 6 * 65 + 100;
+  setTimeout(() => {
+    document.getElementById('btnSave').disabled = false;
+    renderTicket(lastPicked.reduce((acc, _, i) => {
+      if (i % 6 === 0) acc.push([]);
+      acc[acc.length - 1].push(lastPicked[i]);
+      return acc;
+    }, []));
+  }, delay);
 }
 
 /* ── 초기화 ── */
@@ -165,6 +173,9 @@ function clearBoard() {
     board.appendChild(row);
   }
   document.getElementById('btnSave').disabled = true;
+  const ts = document.getElementById('ticketSection');
+  ts.classList.remove('visible');
+  document.getElementById('ticketBody').innerHTML = '';
   updateStatsHighlight();
 }
 
@@ -223,6 +234,23 @@ function toggleTheme() {
   const isDark = document.body.classList.toggle('dark-mode');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
   document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+}
+
+/* ── 로또 기입 용지 ── */
+function renderTicket(gameNums) {
+  const body = document.getElementById('ticketBody');
+  const sets = gameNums.map(nums => new Set(nums));
+  let html = '';
+  for (let n = 1; n <= 45; n++) {
+    const c = ballColor(n);
+    const circles = sets.map(s =>
+      `<div class="tk-circle${s.has(n) ? ' tk-' + c : ''}"></div>`
+    ).join('');
+    html += `<div class="tk-row"><span class="tk-num">${n}</span>${circles}</div>`;
+    if (n % 5 === 0 && n < 45) html += '<div class="tk-sep"></div>';
+  }
+  body.innerHTML = html;
+  document.getElementById('ticketSection').classList.add('visible');
 }
 
 /* ── 이미지 저장 ── */

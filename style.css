@@ -682,6 +682,129 @@ body.dark-mode .stat-bar-wrap {
   .contact-section { padding: 20px 16px; }
 }
 
+/* ───────────── LOTTO TICKET ───────────── */
+.ticket-section {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 32px;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.ticket-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ticket-section-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.ticket-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ticket-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ticket-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.ticket-brand-lotto {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--accent2);
+  letter-spacing: 2px;
+}
+
+.ticket-brand-slash {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ticket-col-labels {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tk-spacer {
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.ticket-col-labels span:not(.tk-spacer) {
+  width: 22px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.ticket-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tk-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-num {
+  width: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.tk-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg4);
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.tk-circle.tk-y { background: radial-gradient(circle at 35% 30%, #ffe566, #f9a800); border-color: #f9a800; }
+.tk-circle.tk-b { background: radial-gradient(circle at 35% 30%, #90caf9, #1565c0); border-color: #1565c0; }
+.tk-circle.tk-r { background: radial-gradient(circle at 35% 30%, #ef9a9a, #c62828); border-color: #c62828; }
+.tk-circle.tk-s { background: radial-gradient(circle at 35% 30%, #cfd8dc, #546e7a); border-color: #546e7a; }
+.tk-circle.tk-g { background: radial-gradient(circle at 35% 30%, #dce775, #558b2f); border-color: #558b2f; }
+
+.tk-sep {
+  height: 6px;
+}
+
 /* ───────────── FAQ ───────────── */
 .faq-section {
   width: 100%;
