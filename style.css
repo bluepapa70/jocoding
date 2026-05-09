@@ -339,12 +339,12 @@ h1 .gold { color: var(--accent); }
 .ball-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 
 .ball {
-  width: 52px; height: 52px;
+  width: 60px; height: 60px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 800;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0,0,0,0.35);
@@ -379,7 +379,7 @@ h1 .gold { color: var(--accent); }
 .ball.g { background: radial-gradient(circle at 35% 30%, #dce775, #558b2f); }  /* 41–45 */
 
 .ball-placeholder {
-  width: 52px; height: 52px;
+  width: 60px; height: 60px;
   border-radius: 50%;
   background: var(--bg3);
   border: 2px dashed var(--border);
@@ -1102,7 +1102,7 @@ body.dark-mode .stat-bar-wrap {
 
 /* ───────────── RESPONSIVE ───────────── */
 @media (max-width: 500px) {
-  .ball, .ball-placeholder { width: 44px; height: 44px; font-size: 15px; }
+  .ball, .ball-placeholder { width: 50px; height: 50px; font-size: 18px; }
   .game-row { padding: 14px 12px; gap: 10px; }
   .balls { gap: 7px; }
   .ball::after { top: 5px; left: 6px; width: 11px; height: 7px; }
