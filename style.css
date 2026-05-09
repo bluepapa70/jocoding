@@ -39,7 +39,7 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Noto Sans KR', 'Segoe UI', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -89,13 +89,13 @@ header {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  font-family: 'Black Han Sans', sans-serif;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--accent2);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-bottom: 20px;
-  font-variant-numeric: tabular-nums;
 }
 
 .logo-dot {
@@ -111,9 +111,10 @@ header {
 }
 
 h1 {
-  font-size: clamp(24px, 5vw, 42px);
-  font-weight: 800;
-  letter-spacing: -1.5px;
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: clamp(26px, 5vw, 44px);
+  font-weight: 400;
+  letter-spacing: -0.5px;
   line-height: 1.1;
   margin-bottom: 10px;
   white-space: nowrap;
@@ -189,8 +190,8 @@ h1 .gold { color: var(--accent); }
   border-radius: 8px;
   padding: 9px 22px;
   font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
   background: transparent;
   color: var(--muted);
   transition: all 0.2s;
@@ -393,7 +394,7 @@ h1 .gold { color: var(--accent); }
   cursor: pointer;
   border: none;
   border-radius: 10px;
-  font-family: inherit;
+  font-family: 'Noto Sans KR', sans-serif;
   font-weight: 700;
   font-size: 15px;
   padding: 15px 34px;
