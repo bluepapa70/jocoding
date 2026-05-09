@@ -390,6 +390,17 @@ function drawLottoCanvas(gameNums) {
   return canvas;
 }
 
+function triggerDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function saveAsImage() {
   if (lastPicked.length === 0) return;
 
@@ -403,27 +414,18 @@ async function saveAsImage() {
   const canvas = drawLottoCanvas(gameNums);
   canvas.toBlob(async (blob) => {
     const fileName = `lotto-${new Date().toISOString().slice(0, 10)}.png`;
-    const file = new File([blob], fileName, { type: 'image/png' });
+
+    // 다운로드 폴더에 항상 저장
+    triggerDownload(blob, fileName);
+
+    // 모바일에서 추가로 공유 시트 제공
     try {
+      const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'AI 로또 번호' });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
+        await navigator.share({ files: [file], title: '통계왕 AI Lotto 번호' });
       }
     } catch (e) {
-      if (e.name !== 'AbortError') {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      // AbortError(사용자 취소)는 무시
     }
   }, 'image/png');
 }
