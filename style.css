@@ -162,6 +162,16 @@ h1 .gold { color: var(--accent); }
   opacity: 0.4;
 }
 
+.countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(251, 196, 0, 0.12);
+  padding: 1px 7px;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+
 /* ───────────── MODE TOGGLE ───────────── */
 .mode-wrap {
   display: flex;

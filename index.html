@@ -86,22 +86,48 @@
   <script src="main.js"></script>
   <script>
     (function () {
-      const now = new Date();
       const days = ['일', '월', '화', '수', '목', '금', '토'];
       const fmt = d => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
 
-      const todayStr = fmt(now);
+      function getNextDraw() {
+        const now = new Date();
+        const draw = new Date(now);
+        const dow = draw.getDay();
+        const daysUntilSat = (6 - dow + 7) % 7 || 7;
+        const isTodaySat = dow === 6 && (now.getHours() < 20 || (now.getHours() === 20 && now.getMinutes() < 35));
+        if (!isTodaySat) draw.setDate(draw.getDate() + daysUntilSat);
+        draw.setHours(20, 35, 0, 0);
+        return draw;
+      }
 
-      const draw = new Date(now);
-      const dow = draw.getDay(); // 0=일 6=토
-      const daysUntilSat = (6 - dow + 7) % 7 || 7;
-      // 오늘이 토요일이고 20:35 이전이면 오늘이 추첨일
-      const isTodaySat = dow === 6 && (now.getHours() < 20 || (now.getHours() === 20 && now.getMinutes() < 35));
-      if (!isTodaySat) draw.setDate(draw.getDate() + daysUntilSat);
-      const drawStr = `${fmt(draw)} 오후 8:35`;
+      function pad(n) { return String(n).padStart(2, '0'); }
 
-      document.getElementById('drawInfo').innerHTML =
-        `<span>📅 오늘: ${todayStr}</span><span class="draw-divider">|</span><span>🎯 이번 주 추첨: ${drawStr}</span>`;
+      function updateInfo() {
+        const now = new Date();
+        const draw = getNextDraw();
+        const diff = draw - now;
+
+        const todayStr = fmt(now);
+        const drawStr = `${fmt(draw)} 오후 8:35`;
+
+        let countdown = '';
+        if (diff > 0) {
+          const h = Math.floor(diff / 3600000);
+          const m = Math.floor((diff % 3600000) / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          const d = Math.floor(h / 24);
+          const rh = h % 24;
+          countdown = d > 0
+            ? `<span class="countdown">${d}일 ${pad(rh)}:${pad(m)}:${pad(s)}</span>`
+            : `<span class="countdown">${pad(rh)}:${pad(m)}:${pad(s)}</span>`;
+        }
+
+        document.getElementById('drawInfo').innerHTML =
+          `<span>📅 오늘: ${todayStr}</span><span class="draw-divider">|</span><span>🎯 이번 주 추첨: ${drawStr} ${countdown}</span>`;
+      }
+
+      updateInfo();
+      setInterval(updateInfo, 1000);
     })();
   </script>
 </body>
